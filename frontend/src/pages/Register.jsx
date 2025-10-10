@@ -53,7 +53,15 @@ const Register = () => {
       // Redirigir al login después del registro exitoso
       navigate('/login', { state: { message: 'Registro exitoso. Por favor inicia sesión.' } });
     } catch (err) {
-      setError(err.message || 'Error al registrarse. Inténtalo de nuevo.');
+      console.error('Error en el registro:', err);
+      // Mostrar mensaje de error más descriptivo
+      if (err.message) {
+        setError(err.message);
+      } else if (typeof err === 'object' && err !== null) {
+        setError(JSON.stringify(err));
+      } else {
+        setError('Error al registrarse. Inténtalo de nuevo.');
+      }
     } finally {
       setLoading(false);
     }

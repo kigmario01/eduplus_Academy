@@ -32,7 +32,17 @@ export const authService = {
       const response = await api.post('/auth/register', userData);
       return response.data;
     } catch (error) {
-      throw error.response?.data || { message: 'Error en el servidor' };
+      console.error('Error de registro:', error);
+      if (error.response) {
+        // El servidor respondió con un código de estado fuera del rango 2xx
+        throw error.response.data || { message: `Error del servidor: ${error.response.status}` };
+      } else if (error.request) {
+        // La solicitud se realizó pero no se recibió respuesta
+        throw { message: 'No se recibió respuesta del servidor. Verifica tu conexión.' };
+      } else {
+        // Ocurrió un error al configurar la solicitud
+        throw { message: `Error al enviar la solicitud: ${error.message}` };
+      }
     }
   },
 
