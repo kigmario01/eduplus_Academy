@@ -6,12 +6,31 @@ import authRoutes from "./routes/auth.routes.js";
 
 dotenv.config();
 const app = express();
-app.use(cors());
+
+// CORS con origen controlado por env (Vercel/Prod)
+const allowedOrigin = process.env.CORS_ORIGIN || "*";
+app.use(cors({
+  origin: allowedOrigin,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
 app.use(express.json());
 
+// Conectar DB una sola vez
 connectDB();
+
 app.use("/auth", authRoutes);
+
+// Healthcheck
+app.get("/health", (_, res) => res.json({ status: "ok" }));
 
 app.get("/", (_, res) => res.send("Auth Service funcionando 🚀"));
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`✅ Servidor Auth en puerto ${PORT}`));
+
+// Solo escuchar en local/containers, no en Vercel
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => console.log(`✅ Servidor Auth en puerto ${PORT}`));
+}
+
+export default app;
