@@ -1,37 +1,35 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import { connectDB } from "./config/db.js";
-import authRoutes from "./routes/auth.routes.js";
-
-dotenv.config();
-const app = express();
-
-// CORS con origen controlado por env (Vercel/Prod)
-const allowedOrigin = process.env.CORS_ORIGIN || "*";
-app.use(cors({
-  origin: allowedOrigin,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-}));
-app.use(express.json());
-
-// Conectar DB una sola vez
-connectDB();
-
-app.use("/auth", authRoutes);
-
-// Healthcheck
-app.get("/health", (_, res) => res.json({ status: "ok" }));
-
-app.get("/", (_, res) => res.send("Auth Service funcionando 🚀"));
-const PORT = process.env.PORT || 4000;
-
-// Iniciar servidor en entornos no-serverless (Docker, local, Render)
-// La condición original (!process.env.VERCEL) estaba causando problemas en Render
-if (process.env.RENDER || !process.env.VERCEL) {
-  app.listen(PORT, () => console.log(`✅ Servidor Auth en puerto ${PORT}`));
-}
-
+import express from "express"; 
+import pkg from "pg"; 
+const { Pool } = pkg; 
+import cors from "cors"; 
+ 
+const app = express(); 
+app.use(cors()); 
+app.use(express.json()); 
+ 
+// 🟢 Conexión a Neon PostgreSQL 
+const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL, 
+  ssl: { rejectUnauthorized: false }, 
+}); 
+ 
+pool.connect() 
+  .then(() => console.log("✅ PostgreSQL conectado con éxito")) 
+  .catch(err => console.error("❌ Error conectando a PostgreSQL:", err)); 
+ 
+// 🧪 Ruta de prueba 
+app.get("/", async (req, res) => { 
+  try { 
+    const result = await pool.query("SELECT NOW()"); 
+    res.json({ mensaje: "Servidor funcionando 🎉", hora: result.rows[0] }); 
+  } catch (err) { 
+    console.error(err); 
+    res.status(500).json({ error: "Error en la base de datos" }); 
+  } 
+}); 
+ 
+// 🧱 Puerto 
+const PORT = process.env.PORT || 10000; 
+app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`)); 
+ 
 export default app;
