@@ -32,20 +32,20 @@ jobs:
       - name: Build and push frontend
         uses: docker/build-push-action@v5
         with:
-          context: ./eduplus/frontend
-          file: ./eduplus/frontend/Dockerfile
+          context: ./frontend
+          file: ./frontend/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/eduplus-frontend:latest
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/eduplus-frontend:${{ github.sha }}
           build-args: |
-            VITE_API_URL=https://your-backend-domain-or-host:4000
+            VITE_API_URL=${{ secrets.VITE_API_URL }}
 
       - name: Build and push auth-service
         uses: docker/build-push-action@v5
         with:
-          context: ./eduplus/services/auth-service
-          file: ./eduplus/services/auth-service/Dockerfile
+          context: ./services/auth-service
+          file: ./services/auth-service/Dockerfile
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAMESPACE }}/eduplus-auth-service:latest
