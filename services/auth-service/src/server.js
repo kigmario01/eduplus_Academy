@@ -28,8 +28,9 @@ app.get("/health", (_, res) => res.json({ status: "ok" }));
 app.get("/", (_, res) => res.send("Auth Service funcionando 🚀"));
 const PORT = process.env.PORT || 4000;
 
-// Solo escuchar en local/containers, no en Vercel
-if (!process.env.VERCEL) {
+// Iniciar servidor en entornos no-serverless (Docker, local, Render)
+// La condición original (!process.env.VERCEL) estaba causando problemas en Render
+if (process.env.RENDER || !process.env.VERCEL) {
   app.listen(PORT, () => console.log(`✅ Servidor Auth en puerto ${PORT}`));
 }
 
