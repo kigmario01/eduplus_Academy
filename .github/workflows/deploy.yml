@@ -8,6 +8,7 @@ on:
 
 jobs:
   build-and-deploy-frontend:
+    if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID_FRONTEND != '' }}
     runs-on: ubuntu-latest
     
     steps:
@@ -42,6 +43,7 @@ jobs:
           vercel-args: '--prod'
 
   deploy-auth-service:
+    if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID_AUTH != '' }}
     runs-on: ubuntu-latest
     
     steps:
