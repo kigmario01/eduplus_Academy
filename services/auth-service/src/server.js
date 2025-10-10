@@ -13,9 +13,32 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL, 
   ssl: { rejectUnauthorized: false }, 
 }); 
+
+// 🔧 Función para inicializar la base de datos
+const initDatabase = async () => {
+  try {
+    // Crear tabla de usuarios si no existe
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("✅ Tabla 'users' verificada/creada con éxito");
+  } catch (err) {
+    console.error("❌ Error inicializando la base de datos:", err);
+  }
+};
  
 pool.connect() 
-  .then(() => console.log("✅ PostgreSQL conectado con éxito")) 
+  .then(() => {
+    console.log("✅ PostgreSQL conectado con éxito");
+    // Inicializar la base de datos después de conectar
+    initDatabase();
+  })
   .catch(err => console.error("❌ Error conectando a PostgreSQL:", err)); 
  
 // 🧪 Ruta de prueba 
