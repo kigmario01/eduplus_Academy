@@ -1,6 +1,10 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000';
+// En producción, usamos la URL relativa para que apunte al mismo dominio
+const isProduction = import.meta.env.PROD;
+const API_URL = isProduction 
+  ? '/api' 
+  : (import.meta.env.VITE_API_URL || 'http://localhost:4000');
 
 // Crear instancia de axios con URL base
 const api = axios.create({

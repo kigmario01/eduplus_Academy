@@ -46,8 +46,12 @@ const Register = () => {
     setLoading(true);
     
     try {
-      // Eliminar confirmPassword antes de enviar al servidor
-      const { confirmPassword, ...userData } = formData;
+      // Extraer solo los campos requeridos por el backend
+      const userData = {
+        name: formData.name,
+        email: formData.email,
+        password: formData.password
+      };
       
       await authService.register(userData);
       // Redirigir al login después del registro exitoso

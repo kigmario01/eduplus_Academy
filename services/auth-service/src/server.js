@@ -100,6 +100,7 @@ app.post("/api/register", async (req, res) => {
  
 // 🧱 Puerto 
 const PORT = process.env.PORT || 10000; 
-app.listen(PORT, () => console.log(`🚀 Servidor corriendo en puerto ${PORT}`)); 
- 
+app.listen(PORT, () => { 
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`); 
+});
 export default app;
