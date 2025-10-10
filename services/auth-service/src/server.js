@@ -53,7 +53,7 @@ app.get("/", async (req, res) => {
 }); 
 
 // 🔐 Ruta de registro con depuración
-app.post("/api/register", async (req, res) => { 
+app.post("/auth/register", async (req, res) => { 
   try { 
     console.log("📩 Registro recibido:", req.body); 
 
