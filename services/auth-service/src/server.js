@@ -20,11 +20,13 @@ const initDatabase = async () => {
     // Crear tabla de usuarios si no existe
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        email VARCHAR(100) UNIQUE NOT NULL,
-        password VARCHAR(100) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    lastname VARCHAR(100),
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    role VARCHAR(50) DEFAULT 'student',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
     console.log("✅ Tabla 'users' verificada/creada con éxito");
@@ -57,7 +59,7 @@ app.post("/api/auth/register", async (req, res) => {
   try { 
     console.log("📩 Registro recibido:", req.body); 
 
-    const { name, email, password } = req.body; 
+    const { name, lastname, email, password, role } = req.body; 
 
     if (!name || !email || !password) { 
       console.log("❌ Campos faltantes:", req.body); 
@@ -77,8 +79,8 @@ app.post("/api/auth/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10); 
 
     const result = await pool.query( 
-      "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email", 
-      [name, email, hashedPassword] 
+      "INSERT INTO users (name, lastname, email, password, role) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, lastname, email, role", 
+      [name, lastname || '', email, hashedPassword, role || 'student'] 
     ); 
 
     console.log("✅ Usuario creado:", result.rows[0]); 
