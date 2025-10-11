@@ -9,7 +9,7 @@ app.use(cors());
 app.use(express.json());
 
 // 🟢 Conexión a PostgreSQL (Neon)
-const pool = new Pool({
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 });
@@ -25,8 +25,10 @@ const initDatabase = async () => {
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
+        lastname VARCHAR(100),
         email VARCHAR(100) UNIQUE NOT NULL,
         password VARCHAR(100) NOT NULL,
+        role VARCHAR(50) DEFAULT 'student',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
