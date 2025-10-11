@@ -1,8 +1,13 @@
 import express from "express";
-import { register, login } from "../controllers/auth.controller.js";
+import { registerUser } from "../controllers/authController.js";
+
 const router = express.Router();
 
-router.post("/register", register);
-router.post("/login", login);
+// Ruta que el frontend está llamando
+router.post("/register", registerUser);
+// Mantenemos la ruta de login por si se necesita
+router.post("/login", (req, res) => {
+  res.status(501).json({ message: "Funcionalidad de login en desarrollo" });
+});
 
 export default router;
