@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 // Configuración de URL para diferentes entornos
+// Solución para el error 404 entre Vercel (frontend) y Render (backend)
 const API_URL = import.meta.env.VITE_API_URL || 
   (import.meta.env.PROD 
     ? 'https://eduplus-academy.onrender.com/api' // URL de tu backend en Render
