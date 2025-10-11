@@ -47,6 +47,15 @@ app.get("/", (req, res) => {
   res.json({ mensaje: "Servidor funcionando 🚀" });
 });
 
+// 🔹 Ruta de prueba para verificar conectividad
+app.get("/api/test", (req, res) => {
+  res.json({ 
+    mensaje: "API funcionando correctamente", 
+    timestamp: new Date().toISOString(),
+    rutas_disponibles: ["/api/auth/register", "/api/auth/login"]
+  });
+});
+
 // 🔹 Ruta 404 para depurar errores
 app.use((req, res) => {
   res.status(404).json({ error: "Ruta no encontrada", path: req.originalUrl });

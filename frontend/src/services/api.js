@@ -2,10 +2,8 @@ import axios from 'axios';
 
 // Configuración de URL para diferentes entornos
 // Solución para el error de conexión entre Vercel (frontend) y Render (backend)
-const API_URL = import.meta.env.VITE_API_URL || 
-  (import.meta.env.PROD 
-    ? 'https://eduplus-academy.onrender.com' // URL directa a la raíz del backend en Render
-    : 'http://localhost:4000');
+// Usando URL absoluta para evitar problemas de configuración
+const API_URL = 'https://eduplus-academy.onrender.com';
 
 // Crear instancia de axios con URL base
 const api = axios.create({
@@ -34,7 +32,10 @@ export const authService = {
   // Registro de usuario
   register: async (userData) => {
     try {
+      console.log('🔄 Intentando registrar usuario en:', API_URL + '/api/auth/register');
+      console.log('📤 Datos enviados:', userData);
       const response = await api.post('/api/auth/register', userData);
+      console.log('✅ Respuesta recibida:', response.data);
       return response.data;
     } catch (error) {
       console.error('Error de registro:', error);
