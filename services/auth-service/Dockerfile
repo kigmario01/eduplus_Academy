@@ -6,5 +6,5 @@ RUN npm install --production
 
 COPY . .
 
-EXPOSE 4000
+EXPOSE 10000
 CMD ["npm", "start"]
