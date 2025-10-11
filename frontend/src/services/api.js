@@ -2,12 +2,15 @@ import axios from 'axios';
 
 // Configuración de URL para diferentes entornos
 // Solución para el error de conexión entre Vercel (frontend) y Render (backend)
-// Usando URL absoluta para evitar problemas de configuración
-const API_URL = 'https://eduplus-academy.onrender.com';
+const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_URL = isDevelopment 
+  ? 'http://localhost:4000' 
+  : 'https://eduplus-academy.onrender.com';
 
 // Crear instancia de axios con URL base
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 30000, // 30 segundos de timeout
   headers: {
     'Content-Type': 'application/json',
   },
