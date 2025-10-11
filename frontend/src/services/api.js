@@ -58,7 +58,10 @@ export const authService = {
   // Login de usuario
   login: async (credentials) => {
     try {
-      const response = await api.post('/auth/login', credentials);
+      console.log('🔄 Intentando login en:', API_URL + '/api/auth/login');
+      console.log('📤 Credenciales enviadas:', { email: credentials.email, password: '******' });
+      const response = await api.post('/api/auth/login', credentials);
+      console.log('✅ Login exitoso:', response.data);
       // Guardar token y datos de usuario en localStorage
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
@@ -66,6 +69,7 @@ export const authService = {
       }
       return response.data;
     } catch (error) {
+      console.error('❌ Error en login:', error);
       throw error.response?.data || { message: 'Error en el servidor' };
     }
   },
