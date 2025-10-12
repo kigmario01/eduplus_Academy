@@ -44,7 +44,6 @@ const Landing = () => {
           <img
             className="h-full w-full object-cover object-center rounded-l-3xl shadow-2xl"
             src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80"
-            loading="lazy"
             alt="Estudiantes aprendiendo"
           />
         </div>
