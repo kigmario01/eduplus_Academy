@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
+import api from '../../lib/api';
 
 // Componentes para el dashboard
 const StatCard = ({ title, value, icon, color }) => {
@@ -24,7 +25,9 @@ const StatCard = ({ title, value, icon, color }) => {
 };
 
 const CourseCard = ({ course }) => {
-  const progressPercentage = (course.completedLessons / course.totalLessons) * 100;
+  const completed = Number(course.completedLessons || 0);
+  const total = Number(course.totalLessons || 0);
+  const progressPercentage = total > 0 ? (completed / total) * 100 : 0;
   
   return (
     <motion.div
@@ -33,17 +36,21 @@ const CourseCard = ({ course }) => {
     >
       <div className="h-32 bg-gray-200 dark:bg-gray-700 relative">
         <img 
-          src={course.image} 
-          alt={course.title} 
+          src={course.image}
+          alt={course.title}
           className="w-full h-full object-cover"
         />
-        <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
-          {course.category}
-        </div>
+        {course.category && (
+          <div className="absolute top-2 right-2 bg-blue-500 text-white text-xs px-2 py-1 rounded-full">
+            {course.category}
+          </div>
+        )}
       </div>
       <div className="p-4">
         <h3 className="font-semibold text-gray-800 dark:text-white">{course.title}</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{course.instructor}</p>
+        {course.instructor && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{course.instructor}</p>
+        )}
         
         <div className="mt-3">
           <div className="flex justify-between text-xs mb-1">
@@ -60,7 +67,7 @@ const CourseCard = ({ course }) => {
         
         <div className="mt-4 flex justify-between items-center">
           <span className="text-xs text-gray-500 dark:text-gray-400">
-            {course.completedLessons} / {course.totalLessons} lecciones
+            {completed} / {total} lecciones
           </span>
           <motion.button
             whileTap={{ scale: 0.95 }}
@@ -109,112 +116,77 @@ const Dashboard = () => {
   const [stats, setStats] = useState([]);
   const [courses, setCourses] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Simulando carga de datos
-    setTimeout(() => {
-      setStats([
-        { 
-          title: 'Cursos Activos', 
-          value: '4', 
-          icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-          ),
-          color: 'border-l-4 border-blue-500'
-        },
-        { 
-          title: 'Horas de Estudio', 
-          value: '32', 
-          icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          ),
-          color: 'border-l-4 border-green-500'
-        },
-        { 
-          title: 'Certificados', 
-          value: '2', 
-          icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-            </svg>
-          ),
-          color: 'border-l-4 border-yellow-500'
-        },
-        { 
-          title: 'Puntos', 
-          value: '750', 
-          icon: (
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-          ),
-          color: 'border-l-4 border-purple-500'
-        }
-      ]);
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const [summaryRes, coursesRes, activitiesRes] = await Promise.all([
+          api.get('/users/me/summary'),
+          api.get('/users/me/courses', { params: { status: 'in_progress' } }),
+          api.get('/users/me/activities', { params: { limit: 10 } }),
+        ]);
 
-      setCourses([
-        {
-          id: 1,
-          title: 'Desarrollo Web con React',
-          instructor: 'Juan Pérez',
-          category: 'Desarrollo',
-          completedLessons: 8,
-          totalLessons: 12,
-          image: 'https://images.unsplash.com/photo-1633356122102-3fe601e05bd2?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
-        },
-        {
-          id: 2,
-          title: 'Diseño UX/UI Avanzado',
-          instructor: 'María Gómez',
-          category: 'Diseño',
-          completedLessons: 5,
-          totalLessons: 10,
-          image: 'https://images.unsplash.com/photo-1561070791-2526d30994b5?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
-        },
-        {
-          id: 3,
-          title: 'JavaScript Moderno',
-          instructor: 'Carlos Ruiz',
-          category: 'Programación',
-          completedLessons: 12,
-          totalLessons: 15,
-          image: 'https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60'
-        }
-      ]);
+        const summary = summaryRes?.data || {};
+        const statsCards = [
+          {
+            title: 'Horas de Estudio',
+            value: String(summary.hoursStudied ?? 0),
+            icon: (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
+              </svg>
+            ),
+            color: 'border-l-4 border-blue-500'
+          },
+          {
+            title: 'Cursos Completados',
+            value: String(summary.completedCourses ?? 0),
+            icon: (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ),
+            color: 'border-l-4 border-green-500'
+          },
+          {
+            title: 'Certificados',
+            value: String(summary.certificates ?? 0),
+            icon: (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806A3.42 3.42 0 013.697 16.165a3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946A3.42 3.42 0 017.835 4.697z" />
+              </svg>
+            ),
+            color: 'border-l-4 border-yellow-500'
+          },
+          {
+            title: 'Puntos',
+            value: String(summary.points ?? 0),
+            icon: (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            ),
+            color: 'border-l-4 border-purple-500'
+          }
+        ];
+        setStats(statsCards);
 
-      setActivities([
-        {
-          id: 1,
-          type: 'completion',
-          text: 'Completaste la lección "Introducción a React Hooks"',
-          time: 'Hace 2 horas'
-        },
-        {
-          id: 2,
-          type: 'enrollment',
-          text: 'Te inscribiste en el curso "Diseño UX/UI Avanzado"',
-          time: 'Hace 1 día'
-        },
-        {
-          id: 3,
-          type: 'comment',
-          text: 'Recibiste una respuesta a tu pregunta sobre JavaScript',
-          time: 'Hace 2 días'
-        },
-        {
-          id: 4,
-          type: 'completion',
-          text: 'Completaste el curso "Fundamentos de HTML y CSS"',
-          time: 'Hace 1 semana'
-        }
-      ]);
+        setCourses(Array.isArray(coursesRes?.data?.items) ? coursesRes.data.items : (coursesRes?.data || []));
+        setActivities(Array.isArray(activitiesRes?.data?.items) ? activitiesRes.data.items : (activitiesRes?.data || []));
+        setError(null);
+      } catch (err) {
+        setStats([]);
+        setCourses([]);
+        setActivities([]);
+        setError(err.message || 'No se pudieron cargar los datos');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-      setIsLoading(false);
-    }, 1000);
+    loadData();
   }, []);
 
   // Animación para los elementos que aparecen
@@ -249,6 +221,11 @@ const Dashboard = () => {
         <Header />
         
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
+          {error && (
+            <div className="mb-4 p-3 rounded-md bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400">
+              {error}
+            </div>
+          )}
           {isLoading ? (
             <div className="flex items-center justify-center h-full">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
@@ -272,9 +249,15 @@ const Dashboard = () => {
                 variants={itemVariants}
                 className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8"
               >
-                {stats.map((stat, index) => (
-                  <StatCard key={index} {...stat} />
-                ))}
+                {stats.length > 0 ? (
+                  stats.map((stat, index) => (
+                    <StatCard key={index} {...stat} />
+                  ))
+                ) : (
+                  <div className="col-span-1 md:col-span-2 lg:col-span-4 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                    <p className="text-gray-600 dark:text-gray-300">No hay estadísticas disponibles todavía.</p>
+                  </div>
+                )}
               </motion.div>
               
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -295,11 +278,17 @@ const Dashboard = () => {
                     </motion.a>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {courses.map((course) => (
-                      <CourseCard key={course.id} course={course} />
-                    ))}
-                  </div>
+                  {courses.length > 0 ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {courses.map((course) => (
+                        <CourseCard key={course.id || course._id} course={course} />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                      <p className="text-gray-600 dark:text-gray-300">Aún no tienes cursos en progreso.</p>
+                    </div>
+                  )}
                 </motion.div>
                 
                 {/* Actividad reciente */}
@@ -307,16 +296,20 @@ const Dashboard = () => {
                   <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4">
                     <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-4">Actividad Reciente</h3>
                     
-                    <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                      {activities.map((activity) => (
-                        <ActivityItem key={activity.id} activity={activity} />
-                      ))}
-                    </div>
+                    {activities.length > 0 ? (
+                      <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                        {activities.map((activity) => (
+                          <ActivityItem key={activity.id || activity._id} activity={activity} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-gray-600 dark:text-gray-300">Sin actividad reciente.</p>
+                    )}
                     
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="mt-4 w-full py-2 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-medium rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors duration-200"
+                      className="mt-4 w-full py-2 px-4 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-sm font-medium rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors duración-200"
                     >
                       Ver todo el historial
                     </motion.button>
