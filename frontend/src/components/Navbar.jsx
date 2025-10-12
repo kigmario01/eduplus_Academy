@@ -141,7 +141,7 @@ const Navbar = () => {
                   ? 'text-gray-500 hover:text-gray-600 hover:bg-gray-100' 
                   : 'text-white hover:text-white hover:bg-white/10'
               }`}
-              aria-expanded="false"
+              aria-expanded={isMenuOpen}
             >
               <span className="sr-only">Abrir menú principal</span>
               {/* Icon when menu is closed */}
