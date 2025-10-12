@@ -1,8 +1,9 @@
 import axios from 'axios';
 
-// Cliente axios con baseURL del proxy de Vite
+// Usa VITE_API_URL en builds (Docker/CI) y fallback al proxy /api en dev
+const baseURL = import.meta?.env?.VITE_API_URL || '/api';
 const api = axios.create({
-  baseURL: '/api',
+  baseURL,
   timeout: 15000,
 });
 
