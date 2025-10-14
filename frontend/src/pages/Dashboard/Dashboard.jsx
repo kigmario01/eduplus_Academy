@@ -29,7 +29,7 @@ const Dashboard = () => {
   const [activities, setActivities] = useState([]);
   const [user, setUser] = useState(getStoredUser);
   const [error, setError] = useState(null);
-  const [isMock, setIsMock] = useState(false);
+  const [hasData, setHasData] = useState(false);
 
   const loadDashboard = useCallback(async () => {
     setIsLoading(true);
@@ -41,11 +41,11 @@ const Dashboard = () => {
       setActivities(Array.isArray(data.activities) ? data.activities : []);
       setUser((prevUser) => data.user || prevUser || getStoredUser());
       setError(data.error || null);
-      setIsMock(Boolean(data.isMock));
+      setHasData(Boolean(data.hasData));
     } catch (dashboardError) {
       console.error('No se pudieron cargar los datos del dashboard', dashboardError);
       setError(dashboardError.message || 'No se pudieron cargar los datos');
-      setIsMock(false);
+      setHasData(false);
     } finally {
       setIsLoading(false);
     }
@@ -75,7 +75,7 @@ const Dashboard = () => {
                   isLoading={isLoading}
                   error={error}
                   onRetry={loadDashboard}
-                  isMock={isMock}
+                  hasData={hasData}
                 />
               }
             />

@@ -1,5 +1,4 @@
 import api from '../lib/api';
-import mockDashboardData from '../mocks/mockDashboardData';
 
 export async function fetchDashboardOverview() {
   try {
@@ -19,26 +18,31 @@ export async function fetchDashboardOverview() {
 
     return {
       summary: {
-        hoursStudied: summaryData.hoursStudied ?? mockDashboardData.summary.hoursStudied,
-        completedCourses: summaryData.completedCourses ?? mockDashboardData.summary.completedCourses,
-        certificates: summaryData.certificates ?? mockDashboardData.summary.certificates,
-        points: summaryData.points ?? mockDashboardData.summary.points,
+        hoursStudied: summaryData.hoursStudied ?? null,
+        completedCourses: summaryData.completedCourses ?? null,
+        certificates: summaryData.certificates ?? null,
+        points: summaryData.points ?? null,
       },
       courses: coursesData,
       activities: activitiesData,
-      user: summaryData.user || mockDashboardData.user,
+      user: summaryData.user || null,
       error: null,
-      isMock: false,
+      hasData: !!(summaryData.hoursStudied || coursesData.length || activitiesData.length),
     };
   } catch (error) {
     console.error('Error fetching dashboard data', error);
     return {
-      summary: mockDashboardData.summary,
-      courses: mockDashboardData.courses,
-      activities: mockDashboardData.activities,
-      user: mockDashboardData.user,
-      error: error.message || 'No se pudieron cargar los datos',
-      isMock: true,
+      summary: {
+        hoursStudied: null,
+        completedCourses: null,
+        certificates: null,
+        points: null,
+      },
+      courses: [],
+      activities: [],
+      user: null,
+      error: error.message || 'No se pudieron cargar los datos del servidor',
+      hasData: false,
     };
   }
 }

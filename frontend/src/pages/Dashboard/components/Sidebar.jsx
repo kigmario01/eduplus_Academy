@@ -55,26 +55,26 @@ const Sidebar = () => {
 
   return (
     <motion.div
-      className="bg-white dark:bg-gray-800 h-screen shadow-lg"
+      className="bg-gradient-to-b from-white via-neutral-50 to-secondary-50 dark:from-neutral-900 dark:via-neutral-800 dark:to-primary-900 h-screen shadow-xl border-r border-neutral-200 dark:border-neutral-700"
       initial="expanded"
       animate={isCollapsed ? 'collapsed' : 'expanded'}
       variants={variants}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
     >
-      <div className="p-4 flex justify-between items-center">
+      <div className="p-4 flex justify-between items-center border-b border-neutral-200 dark:border-neutral-700">
         {!isCollapsed && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="text-xl font-bold text-blue-600 dark:text-blue-400"
+            className="text-xl font-bold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent"
           >
             EduPlus
           </motion.div>
         )}
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+          className="p-2 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-300 hover:shadow-md"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -107,25 +107,26 @@ const Sidebar = () => {
               <li key={item.path} className="px-4 py-2">
                 <Link
                   to={item.path}
-                  className={`flex items-center p-2 rounded-md transition-all duration-200 ${
+                  className={`flex items-center p-3 rounded-xl transition-all duration-300 group relative ${
                     isActive
-                      ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400'
-                      : 'text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700'
+                      ? 'bg-gradient-to-r from-primary-100 to-secondary-100 text-primary-700 dark:from-primary-900/30 dark:to-secondary-900/30 dark:text-primary-300 shadow-md'
+                      : 'text-neutral-600 hover:bg-gradient-to-r hover:from-primary-50 hover:to-secondary-50 dark:text-neutral-300 dark:hover:from-primary-900/10 dark:hover:to-secondary-900/10 hover:text-primary-600 dark:hover:text-primary-400'
                   }`}
                 >
-                  <div className="mr-3">{item.icon}</div>
+                  <div className={`mr-3 transition-all duration-300 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'group-hover:text-primary-600 dark:group-hover:text-primary-400'}`}>{item.icon}</div>
                   {!isCollapsed && (
                     <motion.span
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.1 }}
+                      className="font-medium"
                     >
                       {item.name}
                     </motion.span>
                   )}
                   {isActive && (
                     <motion.div
-                      className="absolute left-0 w-1 h-8 bg-blue-600 dark:bg-blue-400 rounded-r-md"
+                      className="absolute left-0 w-1 h-8 bg-gradient-to-b from-primary-600 to-secondary-600 rounded-r-md"
                       layoutId="activeIndicator"
                       transition={{ duration: 0.3 }}
                     />
@@ -139,7 +140,7 @@ const Sidebar = () => {
 
       <div className="absolute bottom-4 w-full px-4">
         <button
-          className="flex items-center w-full p-2 rounded-md text-red-500 hover:bg-red-50 dark:hover:bg-red-900 transition-colors duration-200"
+          className="flex items-center w-full p-3 rounded-xl text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-900/20 transition-all duration-300 hover:shadow-md group"
           onClick={() => {
             // Implementar lógica de logout
             localStorage.removeItem('token');
@@ -147,7 +148,7 @@ const Sidebar = () => {
             window.location.href = '/login';
           }}
         >
-          <div className="mr-3">
+          <div className="mr-3 group-hover:scale-110 transition-transform duration-300">
             <LogoutIcon />
           </div>
           {!isCollapsed && (
@@ -155,6 +156,7 @@ const Sidebar = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.1 }}
+              className="font-medium"
             >
               Cerrar Sesión
             </motion.span>

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import EmptyState from '../../../components/EmptyState';
 
 const StatCard = ({ title, value, icon, color }) => (
   <motion.div
@@ -116,11 +117,11 @@ const ActivityItem = ({ activity }) => (
   </div>
 );
 
-const DashboardOverview = ({ user, summary, courses, activities, isLoading, error, onRetry, isMock }) => {
+const DashboardOverview = ({ user, summary, courses, activities, isLoading, error, onRetry, hasData }) => {
   const stats = [
     {
       title: 'Horas de Estudio',
-      value: String(summary?.hoursStudied ?? 0),
+      value: summary?.hoursStudied !== null ? String(summary.hoursStudied) : '--',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3" />
@@ -130,7 +131,7 @@ const DashboardOverview = ({ user, summary, courses, activities, isLoading, erro
     },
     {
       title: 'Cursos Completados',
-      value: String(summary?.completedCourses ?? 0),
+      value: summary?.completedCourses !== null ? String(summary.completedCourses) : '--',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -140,7 +141,7 @@ const DashboardOverview = ({ user, summary, courses, activities, isLoading, erro
     },
     {
       title: 'Certificados',
-      value: String(summary?.certificates ?? 0),
+      value: summary?.certificates !== null ? String(summary.certificates) : '--',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path
@@ -155,7 +156,7 @@ const DashboardOverview = ({ user, summary, courses, activities, isLoading, erro
     },
     {
       title: 'Puntos',
-      value: String(summary?.points ?? 0),
+      value: summary?.points !== null ? String(summary.points) : '--',
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -214,12 +215,21 @@ const DashboardOverview = ({ user, summary, courses, activities, isLoading, erro
         </motion.div>
       )}
 
-      {isMock && (
-        <motion.div
-          variants={itemVariants}
-          className="mb-4 p-3 rounded-md bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-300"
-        >
-          Mostrando datos de ejemplo mientras se restablece la conexión.
+      {!hasData && !error && !isLoading && (
+        <motion.div variants={itemVariants} className="mb-8">
+          <EmptyState
+            icon="🎓"
+            title="Datos del dashboard no disponibles"
+            description="Los datos de tu progreso académico aún no están disponibles. Esto puede deberse a que el servidor no está conectado o aún no has comenzado ningún curso."
+            action={
+              <button
+                onClick={onRetry}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Intentar cargar datos
+              </button>
+            }
+          />
         </motion.div>
       )}
 
