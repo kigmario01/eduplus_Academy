@@ -6,7 +6,7 @@ import DashboardOverview from './pages/DashboardOverview';
 import MyCourses from './pages/MyCourses';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
-import { fetchDashboardOverview } from '../../services/dashboardService';
+import { fetchDashboardOverview } from '@/services/dashboardService';
 
 const getStoredUser = () => {
   if (typeof window === 'undefined') {
