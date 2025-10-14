@@ -17,7 +17,7 @@ const formatTime = (date) => {
   }).format(date);
 };
 
-const DashboardHeader = ({ userName = 'Estudiante', userRole = 'Aprendiz', onRefresh, isMock }) => {
+const DashboardHeader = ({ userName = 'Estudiante', userRole = 'Aprendiz', onRefresh, summary }) => {
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -51,9 +51,7 @@ const DashboardHeader = ({ userName = 'Estudiante', userRole = 'Aprendiz', onRef
               {greeting()}, {userName}
             </h1>
             <p className="mt-2 max-w-xl text-sm text-gray-400 sm:text-base">
-              {isMock
-                ? 'Mostrando datos de demostración mientras conectamos con el servicio real. ¡Todo listo para continuar aprendiendo!'
-                : 'Este es un resumen actualizado de tu progreso, actividad reciente y próximos pasos en EduPlus.'}
+              Este es un resumen actualizado de tu progreso, actividad reciente y próximos pasos en EduPlus.
             </p>
           </div>
         </div>
@@ -73,6 +71,15 @@ const DashboardHeader = ({ userName = 'Estudiante', userRole = 'Aprendiz', onRef
               <p className="font-medium">{formatTime(now)} hrs</p>
             </div>
           </div>
+          {summary?.nextMilestone && (
+            <div className="flex items-center gap-3 rounded-2xl border border-white/5 bg-white/5 px-4 py-3 backdrop-blur">
+              <Sparkles className="h-5 w-5 text-blue-300" />
+              <div>
+                <p className="text-xs text-gray-400">Próximo objetivo</p>
+                <p className="font-medium text-white/90">{summary.nextMilestone}</p>
+              </div>
+            </div>
+          )}
           <div className="flex items-center justify-between gap-3">
             <span className="text-xs uppercase tracking-widest text-gray-500">{userRole}</span>
             {onRefresh && (

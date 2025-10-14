@@ -55,11 +55,17 @@ const CursosEnProgreso = ({ courses }) => {
             className="group relative overflow-hidden rounded-3xl border border-white/5 bg-[#111C3A] shadow-lg shadow-black/20"
           >
             <div className="relative h-40 overflow-hidden">
-              <img
-                src={course.cover || course.image}
-                alt={course.title}
-                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-              />
+              {course.cover || course.image ? (
+                <img
+                  src={course.cover || course.image}
+                  alt={course.title}
+                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-blue-500/40 via-blue-500/10 to-transparent text-white/70">
+                  <PlayCircle className="h-10 w-10" />
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-tr from-black/80 via-black/20 to-transparent" />
               <div className="absolute left-6 top-6 flex items-center gap-2 rounded-full bg-white/10 px-4 py-1 text-xs font-medium text-white">
                 {course.category}

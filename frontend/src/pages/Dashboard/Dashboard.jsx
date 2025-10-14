@@ -9,14 +9,18 @@ import ActividadReciente from './components/ActividadReciente';
 import ErrorBanner from './components/ErrorBanner';
 import Loader from './components/Loader';
 import getDashboardOverview from '../../services/dashboardService';
+import CursosDisponibles from './components/CursosDisponibles';
+import NoticiasDestacadas from './components/NoticiasDestacadas';
 
 const Dashboard = () => {
   const [data, setData] = useState({
     stats: [],
-    courses: [],
+    coursesInProgress: [],
+    availableCourses: [],
     activity: [],
+    news: [],
     user: null,
-    isMock: false,
+    summary: null,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,10 +31,12 @@ const Dashboard = () => {
       const response = await getDashboardOverview();
       setData({
         stats: response?.stats ?? [],
-        courses: response?.courses ?? [],
+        coursesInProgress: response?.coursesInProgress ?? [],
+        availableCourses: response?.availableCourses ?? [],
         activity: response?.activity ?? [],
+        news: response?.news ?? [],
         user: response?.user ?? null,
-        isMock: Boolean(response?.isMock),
+        summary: response?.summary ?? null,
       });
       setError(null);
     } catch (err) {
@@ -64,12 +70,7 @@ const Dashboard = () => {
         <Header />
         <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-10">
           <div className="mx-auto flex max-w-7xl flex-col gap-8">
-            <DashboardHeader
-              userName={userName}
-              userRole={userRole}
-              onRefresh={loadData}
-              isMock={data.isMock}
-            />
+            <DashboardHeader userName={userName} userRole={userRole} onRefresh={loadData} summary={data.summary} />
             <ErrorBanner message={error} onRetry={loadData} />
             <AnimatePresence mode="wait">
               {isLoading ? (
@@ -91,9 +92,15 @@ const Dashboard = () => {
                   className="flex flex-col gap-8"
                 >
                   <StatsCards stats={data.stats} />
-                  <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                    <CursosEnProgreso courses={data.courses} />
-                    <ActividadReciente activity={data.activity} />
+                  <div className="grid gap-8 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+                    <div className="flex flex-col gap-8">
+                      <CursosEnProgreso courses={data.coursesInProgress} />
+                      <CursosDisponibles courses={data.availableCourses} />
+                    </div>
+                    <div className="flex flex-col gap-8">
+                      <ActividadReciente activity={data.activity} />
+                      <NoticiasDestacadas news={data.news} />
+                    </div>
                   </div>
                 </motion.div>
               )}
