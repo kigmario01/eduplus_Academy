@@ -1,6 +1,11 @@
 import api from './api';
 
-const STAT_TONES = ['blue', 'violet', 'emerald', 'amber'];
+// 🔧 URLs de endpoints
+const ENDPOINTS = {
+  dashboard: '/api/dashboard/overview',
+  profile: '/api/dashboard/profile',
+  settings: '/api/dashboard/settings',
+};
 
 const isSkippableError = (error) => {
   if (!error) return false;
@@ -145,138 +150,86 @@ const shouldFallbackToMock = (error) => {
 
 export const getDashboardOverview = async () => {
   try {
-    const [statsRes, coursesRes, activityRes] = await Promise.all([
-      api.get('/dashboard/stats', { 
-        headers: { 'Cache-Control': 'no-cache' }
-      }),
-      api.get('/dashboard/courses', { 
-        params: { status: 'in_progress' },
-        headers: { 'Cache-Control': 'no-cache' }
-      }),
-      api.get('/dashboard/activity', { 
-        params: { limit: 8 },
-        headers: { 'Cache-Control': 'no-cache' }
-      }),
-    ]);
+    console.log('🔄 Iniciando carga de datos del dashboard...');
 
-    // Verificar si las respuestas son válidas (no HTML)
-    const isValidResponse = (res) => {
-      if (!res?.data) return false;
-      if (typeof res.data === 'string' && res.data.includes('<!DOCTYPE html>')) return false;
-      if (typeof res.data === 'object' && res.data.error) return false;
-      return true;
-    };
-
-    const hasValidStats = isValidResponse(statsRes);
-    const hasValidCourses = isValidResponse(coursesRes);
-    const hasValidActivity = isValidResponse(activityRes);
-
-    // Si alguna respuesta no es válida, usar mock data
-    if (!hasValidStats || !hasValidCourses || !hasValidActivity) {
-      console.warn('API responses are invalid (HTML or errors), falling back to mock data');
-      return { ...mockDashboardData, isMock: true };
+    // Verificar si hay token de autenticación
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('⚠️ No hay token de autenticación, redirigiendo al login');
+      throw new Error('No hay token de autenticación');
     }
 
-    const payload = {
-      user: statsRes?.data?.user ?? mockDashboardData.user,
-      stats: Array.isArray(statsRes?.data?.stats) ? statsRes.data.stats : mockDashboardData.stats,
-      courses: Array.isArray(coursesRes?.data?.courses) ? coursesRes.data.courses :
-               Array.isArray(coursesRes?.data?.items) ? coursesRes.data.items :
-               Array.isArray(coursesRes?.data) ? coursesRes.data :
-               mockDashboardData.courses,
-      activity: Array.isArray(activityRes?.data?.activity) ? activityRes.data.activity :
-                Array.isArray(activityRes?.data?.items) ? activityRes.data.items :
-                Array.isArray(activityRes?.data) ? activityRes.data :
-                mockDashboardData.activity,
-      isMock: false,
+    // Obtener datos reales del dashboard desde la API
+    const response = await api.get(ENDPOINTS.dashboard);
+    const data = response.data;
+
+    console.log('✅ Datos del dashboard obtenidos exitosamente:', data);
+
+    return {
+      stats: data.stats || [],
+      coursesInProgress: data.coursesInProgress || [],
+      availableCourses: data.availableCourses || [],
+      activity: data.activity || [],
+      news: data.news || [],
+      user: data.user || null,
+      summary: data.summary || null
     };
 
-    return payload;
   } catch (error) {
-    console.warn('Dashboard API error:', error);
-    // Siempre usar mock data en caso de error
-    return { ...mockDashboardData, isMock: true };
+    console.error('❌ Error al obtener datos del dashboard:', error);
+    
+    // Si es un error de autenticación, limpiar localStorage y redirigir
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+      return;
+    }
+    
+    throw error;
   }
 };
 
-const normalizeProgressCourse = (course = {}) => {
-  const completed = Number(
-    course.completedLessons ?? course.lessonsCompleted ?? course.progressLessons ?? course.completed ?? 0,
-  );
-  const total = Number(
-    course.totalLessons ?? course.lessonsTotal ?? course.total ?? course.totalUnits ?? course.totalModules ?? 0,
-  );
-  const rawProgress = course.progress ?? course.progressPercentage ?? course.percentage ?? 0;
-  let explicitProgress = Number(rawProgress);
-  if (!Number.isFinite(explicitProgress) && typeof rawProgress === 'string') {
-    const sanitized = Number(rawProgress.replace(/[^0-9.,-]/g, '').replace(',', '.'));
-    explicitProgress = Number.isFinite(sanitized) ? sanitized : 0;
+
+
+// 📊 Obtener perfil del usuario
+export const getUserProfile = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
+
+    const response = await api.get(ENDPOINTS.profile);
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    throw error;
   }
-
-  const progress = total > 0 ? Math.min(100, Math.max(0, (completed / total) * 100)) : explicitProgress;
-
-  const resourceThumbnail = Array.isArray(course.resources) ? course.resources[0]?.thumbnail : undefined;
-
-  return {
-    id: course.id ?? course._id ?? course.slug ?? course.code ?? course.title,
-    title: course.title ?? course.name ?? 'Curso sin título',
-    instructor: course.instructor ?? course.teacher ?? course.mentor ?? course.author ?? null,
-    progress: Number.isFinite(progress) ? progress : 0,
-    lessonsCompleted: Number.isFinite(completed) ? completed : 0,
-    lessonsTotal: Number.isFinite(total) ? total : 0,
-    nextLesson:
-      course.nextLesson?.title ??
-      course.nextLesson ??
-      course.upcomingLesson?.title ??
-      course.upcoming?.title ??
-      null,
-    category: course.category ?? course.area ?? course.tag ?? 'General',
-    cover:
-      course.cover ??
-      course.image ??
-      course.thumbnail ??
-      course.banner ??
-      resourceThumbnail ??
-      undefined,
-  };
 };
 
-const normalizeAvailableCourse = (course = {}) => {
-  const resourceThumbnail = Array.isArray(course.resources) ? course.resources[0]?.thumbnail : undefined;
+// ⚙️ Actualizar configuraciones del usuario
+export const updateUserSettings = async (settings) => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No hay token de autenticación');
+    }
 
-  return {
-    id: course.id ?? course._id ?? course.slug ?? course.code ?? course.title,
-    title: course.title ?? course.name ?? 'Curso sin título',
-    category: course.category ?? course.area ?? 'General',
-    description: course.description ?? course.summary ?? '',
-    level: course.level ?? course.difficulty ?? null,
-    startDate: course.startDate ?? course.nextCohort ?? course.launchDate ?? null,
-    duration: course.duration ?? course.estimatedTime ?? null,
-    cover:
-      course.cover ??
-      course.image ??
-      course.thumbnail ??
-      course.banner ??
-      resourceThumbnail ??
-      undefined,
-  };
+    const response = await api.put(ENDPOINTS.settings, settings);
+    return response.data;
+  } catch (error) {
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+    }
+    throw error;
+  }
 };
-
-const normalizeActivityItem = (item = {}) => ({
-  id: item.id ?? item._id ?? item.reference ?? item.title,
-  title: item.title ?? item.headline ?? item.event ?? 'Actividad registrada',
-  description: item.description ?? item.detail ?? item.notes ?? '',
-  date: toDateString(item.date ?? item.createdAt ?? item.timestamp ?? item.performedAt),
-  type: item.type ?? item.kind ?? 'achievement',
-});
-
-const normalizeNewsItem = (item = {}) => ({
-  id: item.id ?? item._id ?? item.slug ?? item.title,
-  title: item.title ?? item.headline ?? 'Novedad',
-  summary: item.summary ?? item.description ?? item.body ?? '',
-  publishedAt: toDateString(item.publishedAt ?? item.date ?? item.createdAt),
-  link: item.url ?? item.link ?? item.href ?? null,
-  category: item.category ?? item.tag ?? 'Actualización',
-});
 
 export default getDashboardOverview;

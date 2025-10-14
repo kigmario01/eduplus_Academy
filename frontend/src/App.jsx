@@ -7,6 +7,9 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard/Dashboard';
+import Profile from './pages/Dashboard/Profile';
+import Settings from './pages/Dashboard/Settings';
+import Courses from './pages/Dashboard/Courses';
 import ProtectedRoute from './components/ProtectedRoute';
 
 // Componente para manejar las transiciones de página
@@ -35,10 +38,26 @@ const AnimatedRoutes = () => {
             } 
           />
           <Route 
-            path="/dashboard/*" 
+            path="/dashboard/profile" 
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <Profile />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/settings" 
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/dashboard/courses" 
+            element={
+              <ProtectedRoute>
+                <Courses />
               </ProtectedRoute>
             } 
           />
