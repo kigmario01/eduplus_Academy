@@ -15,7 +15,7 @@ const courseVariants = {
 };
 
 const CursosEnProgreso = ({ courses }) => {
-  if (!courses.length) {
+  if (!courses?.length) {
     return (
       <div className="rounded-3xl border border-dashed border-white/10 bg-[#0B1430] p-8 text-center">
         <h3 className="text-lg font-semibold text-white">Aún no tienes cursos activos</h3>

@@ -128,6 +128,78 @@ const toDateString = (value) => {
   }
 };
 
+const shouldFallbackToMock = (error) => {
+  if (!error) return false;
+  const message = (error.message || '').toLowerCase();
+  const isOffline = typeof navigator !== 'undefined' && navigator?.onLine === false;
+  
+  // Detectar errores 404, de red, timeout, o rutas no encontradas
+  return isOffline || 
+         message.includes('404') || 
+         message.includes('network') || 
+         message.includes('timeout') ||
+         message.includes('ruta no encontrada') ||
+         message.includes('not found') ||
+         error.response?.status === 404;
+};
+
+export const getDashboardOverview = async () => {
+  try {
+    const [statsRes, coursesRes, activityRes] = await Promise.all([
+      api.get('/dashboard/stats', { 
+        headers: { 'Cache-Control': 'no-cache' }
+      }),
+      api.get('/dashboard/courses', { 
+        params: { status: 'in_progress' },
+        headers: { 'Cache-Control': 'no-cache' }
+      }),
+      api.get('/dashboard/activity', { 
+        params: { limit: 8 },
+        headers: { 'Cache-Control': 'no-cache' }
+      }),
+    ]);
+
+    // Verificar si las respuestas son válidas (no HTML)
+    const isValidResponse = (res) => {
+      if (!res?.data) return false;
+      if (typeof res.data === 'string' && res.data.includes('<!DOCTYPE html>')) return false;
+      if (typeof res.data === 'object' && res.data.error) return false;
+      return true;
+    };
+
+    const hasValidStats = isValidResponse(statsRes);
+    const hasValidCourses = isValidResponse(coursesRes);
+    const hasValidActivity = isValidResponse(activityRes);
+
+    // Si alguna respuesta no es válida, usar mock data
+    if (!hasValidStats || !hasValidCourses || !hasValidActivity) {
+      console.warn('API responses are invalid (HTML or errors), falling back to mock data');
+      return { ...mockDashboardData, isMock: true };
+    }
+
+    const payload = {
+      user: statsRes?.data?.user ?? mockDashboardData.user,
+      stats: Array.isArray(statsRes?.data?.stats) ? statsRes.data.stats : mockDashboardData.stats,
+      courses: Array.isArray(coursesRes?.data?.courses) ? coursesRes.data.courses :
+               Array.isArray(coursesRes?.data?.items) ? coursesRes.data.items :
+               Array.isArray(coursesRes?.data) ? coursesRes.data :
+               mockDashboardData.courses,
+      activity: Array.isArray(activityRes?.data?.activity) ? activityRes.data.activity :
+                Array.isArray(activityRes?.data?.items) ? activityRes.data.items :
+                Array.isArray(activityRes?.data) ? activityRes.data :
+                mockDashboardData.activity,
+      isMock: false,
+    };
+
+    return payload;
+  } catch (error) {
+    console.warn('Dashboard API error:', error);
+    // Siempre usar mock data en caso de error
+    return { ...mockDashboardData, isMock: true };
+  }
+  }
+};
+
 const normalizeProgressCourse = (course = {}) => {
   const completed = Number(
     course.completedLessons ?? course.lessonsCompleted ?? course.progressLessons ?? course.completed ?? 0,
