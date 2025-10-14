@@ -197,7 +197,6 @@ export const getDashboardOverview = async () => {
     // Siempre usar mock data en caso de error
     return { ...mockDashboardData, isMock: true };
   }
-  }
 };
 
 const normalizeProgressCourse = (course = {}) => {
@@ -279,105 +278,5 @@ const normalizeNewsItem = (item = {}) => ({
   link: item.url ?? item.link ?? item.href ?? null,
   category: item.category ?? item.tag ?? 'Actualización',
 });
-
-export const getDashboardOverview = async () => {
-  const [summary, coursesInProgress, availableCourses, activity, news, user] = await Promise.all([
-    fetchFromCandidates(
-      [
-        { request: () => api.get('/dashboard/summary'), transform: (res) => res?.data?.summary ?? res?.data },
-        { request: () => api.get('/dashboard/overview'), transform: (res) => res?.data?.summary },
-        { request: () => api.get('/users/me/summary'), transform: (res) => res?.data },
-        { request: () => api.get('/users/me/dashboard'), transform: (res) => res?.data?.summary },
-      ],
-      { errorMessage: 'No se pudo recuperar el resumen de tu actividad.' },
-    ),
-    fetchFromCandidates(
-      [
-        {
-          request: () => api.get('/dashboard/courses', { params: { scope: 'in_progress' } }),
-          transform: (res) => res?.data?.courses ?? res?.data?.items ?? res?.data,
-        },
-        {
-          request: () => api.get('/users/me/courses', { params: { status: 'in_progress' } }),
-          transform: (res) => res?.data?.courses ?? res?.data?.items ?? res?.data,
-        },
-        {
-          request: () => api.get('/courses', { params: { enrollment: 'mine', status: 'in_progress' } }),
-          transform: (res) => res?.data?.courses ?? res?.data?.items ?? res?.data,
-        },
-      ],
-      { optional: true, defaultValue: [] },
-    ),
-    fetchFromCandidates(
-      [
-        {
-          request: () => api.get('/dashboard/courses', { params: { scope: 'available' } }),
-          transform: (res) => res?.data?.available ?? res?.data?.courses ?? res?.data?.items ?? res?.data,
-        },
-        {
-          request: () => api.get('/courses/available'),
-          transform: (res) => res?.data?.courses ?? res?.data?.items ?? res?.data,
-        },
-        {
-          request: () => api.get('/courses', { params: { status: 'available' } }),
-          transform: (res) => res?.data?.courses ?? res?.data?.items ?? res?.data,
-        },
-      ],
-      { optional: true, defaultValue: [] },
-    ),
-    fetchFromCandidates(
-      [
-        {
-          request: () => api.get('/dashboard/activity', { params: { limit: 8 } }),
-          transform: (res) => res?.data?.activity ?? res?.data?.items ?? res?.data,
-        },
-        {
-          request: () => api.get('/users/me/activities', { params: { limit: 8 } }),
-          transform: (res) => res?.data?.activity ?? res?.data?.items ?? res?.data,
-        },
-      ],
-      { optional: true, defaultValue: [] },
-    ),
-    fetchFromCandidates(
-      [
-        {
-          request: () => api.get('/dashboard/news', { params: { limit: 5 } }),
-          transform: (res) => res?.data?.news ?? res?.data?.items ?? res?.data,
-        },
-        {
-          request: () => api.get('/news', { params: { limit: 5, scope: 'eduplus' } }),
-          transform: (res) => res?.data?.news ?? res?.data?.items ?? res?.data,
-        },
-        {
-          request: () => api.get('/announcements', { params: { limit: 5 } }),
-          transform: (res) => res?.data?.announcements ?? res?.data?.items ?? res?.data,
-        },
-      ],
-      { optional: true, defaultValue: [] },
-    ),
-    fetchFromCandidates(
-      [
-        { request: () => api.get('/users/me'), transform: (res) => res?.data },
-        { request: () => api.get('/profile/me'), transform: (res) => res?.data },
-        { request: () => api.get('/dashboard/summary'), transform: (res) => res?.data?.user },
-      ],
-      { optional: true, defaultValue: null },
-    ),
-  ]);
-
-  return {
-    user: user ?? summary?.user ?? null,
-    stats: mapSummaryToStats(summary),
-    summary,
-    coursesInProgress: Array.isArray(coursesInProgress)
-      ? coursesInProgress.map(normalizeProgressCourse)
-      : [],
-    availableCourses: Array.isArray(availableCourses)
-      ? availableCourses.map(normalizeAvailableCourse)
-      : [],
-    activity: Array.isArray(activity) ? activity.map(normalizeActivityItem) : [],
-    news: Array.isArray(news) ? news.map(normalizeNewsItem) : [],
-  };
-};
 
 export default getDashboardOverview;
