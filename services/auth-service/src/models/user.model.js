@@ -4,7 +4,7 @@ class User {
   // Buscar usuario por email
   static async findOne({ email }) {
     const query = `
-      SELECT id, name, lastname, email, password_hash as password, role, is_active, email_verified, created_at
+      SELECT id, name, lastname, email, password, role, is_active, email_verified, created_at
       FROM users 
       WHERE email = $1 AND is_active = true
     `;
@@ -20,7 +20,7 @@ class User {
       const { name, lastname, email, password, role = 'student' } = userData;
       
       const query = `
-        INSERT INTO users (name, lastname, email, password_hash, role, is_active, email_verified, created_at, updated_at)
+        INSERT INTO users (name, lastname, email, password, role, is_active, email_verified, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, true, false, NOW(), NOW())
         RETURNING id, name, lastname, email, role, is_active, email_verified, created_at
       `;
