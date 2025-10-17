@@ -9,6 +9,19 @@ services:
     volumes:
       - mongo_data:/data/db
 
+  postgres:
+    image: postgres:15
+    container_name: eduplus-postgres
+    environment:
+      - POSTGRES_DB=eduplus_academy
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres123
+    ports:
+      - "15432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database:/docker-entrypoint-initdb.d
+
   auth-service:
     build:
       context: ./services/auth-service
@@ -37,3 +50,4 @@ services:
 
 volumes:
   mongo_data:
+  postgres_data:

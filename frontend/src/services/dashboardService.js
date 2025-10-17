@@ -1,5 +1,4 @@
 import api from '@/lib/api';
-import mockDashboardData from '@/mocks/mockDashboardData';
 
 export async function fetchDashboardOverview() {
   try {

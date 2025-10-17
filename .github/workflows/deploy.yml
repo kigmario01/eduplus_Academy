@@ -26,6 +26,25 @@ jobs:
           cd frontend
           npm ci
       
+      - name: Generate Build Info
+        run: |
+          cd frontend
+          mkdir -p public
+          cat > public/build-info.json << EOF
+          {
+            "version": "1.0.0",
+            "commitSha": "${{ github.sha }}",
+            "commitMessage": "${{ github.event.head_commit.message }}",
+            "buildDate": "$(date -u +%Y-%m-%dT%H:%M:%S.%3NZ)",
+            "branch": "${{ github.ref_name }}",
+            "buildNumber": "${{ github.run_number }}",
+            "repository": "${{ github.repository }}",
+            "actor": "${{ github.actor }}"
+          }
+          EOF
+          echo "Build info generated:"
+          cat public/build-info.json
+
       - name: Build
         run: |
           cd frontend
@@ -74,3 +93,17 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           CORS_ORIGIN: ${{ secrets.CORS_ORIGIN }}
           PORT: ${{ secrets.AUTH_SERVICE_PORT }}
+
+  deploy-course-service:
+    if: ${{ secrets.RENDER_API_KEY != '' && secrets.RENDER_SERVICE_ID_COURSE != '' }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Deploy to Render
+        uses: johnbeynon/render-deploy-action@v0.0.8
+        with:
+          service-id: ${{ secrets.RENDER_SERVICE_ID_COURSE }}
+          api-key: ${{ secrets.RENDER_API_KEY }}
+          wait-for-success: true

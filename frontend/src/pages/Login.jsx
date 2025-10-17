@@ -7,6 +7,7 @@ const Login = () => {
     email: '',
     password: ''
   });
+  const [selectedRole, setSelectedRole] = useState(''); // Nuevo estado para el rol seleccionado
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -28,9 +29,38 @@ const Login = () => {
     setError('');
     setLoading(true);
 
+    // Validar que se haya seleccionado un rol
+    if (!selectedRole) {
+      setError('Por favor, selecciona si eres Instructor o Estudiante antes de continuar.');
+      setLoading(false);
+      return;
+    }
+
     try {
-      await authService.login(formData);
-      navigate('/dashboard'); // Redirigir al dashboard después del login exitoso
+      const response = await authService.login(formData);
+      
+      // Obtener el rol real del usuario desde la respuesta del servidor
+      const userRole = response.user?.role;
+      
+      // Validar que el rol seleccionado coincida con el rol real del usuario
+      if (selectedRole === 'instructor' && userRole !== 'instructor') {
+        setError('❌ Acceso denegado: Tu cuenta no tiene permisos de instructor. Si eres estudiante, selecciona "Estudiante" para continuar.');
+        setLoading(false);
+        return;
+      }
+      
+      if (selectedRole === 'student' && userRole === 'instructor') {
+        setError('❌ Acceso denegado: Tu cuenta es de instructor. Selecciona "Instructor" para acceder a tu panel de control.');
+        setLoading(false);
+        return;
+      }
+      
+      // Si la validación es exitosa, redirigir según el rol del usuario
+      if (userRole === 'instructor') {
+        navigate('/instructor');
+      } else {
+        navigate('/dashboard'); // Para estudiantes y otros roles
+      }
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión. Verifica tus credenciales.');
     } finally {
@@ -92,6 +122,70 @@ const Login = () => {
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
+            {/* Selección de Rol */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                ¿Cómo deseas acceder?
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('student')}
+                  className={`relative flex items-center justify-center px-4 py-3 border-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    selectedRole === 'student'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:bg-blue-50'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                    Estudiante
+                  </div>
+                  {selectedRole === 'student' && (
+                    <div className="absolute top-1 right-1">
+                      <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('instructor')}
+                  className={`relative flex items-center justify-center px-4 py-3 border-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    selectedRole === 'instructor'
+                      ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-md'
+                      : 'border-gray-300 bg-white text-gray-700 hover:border-purple-300 hover:bg-purple-50'
+                  }`}
+                >
+                  <div className="flex items-center">
+                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    Instructor
+                  </div>
+                  {selectedRole === 'instructor' && (
+                    <div className="absolute top-1 right-1">
+                      <svg className="w-4 h-4 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  )}
+                </button>
+              </div>
+              {selectedRole && (
+                <p className="mt-2 text-xs text-gray-600">
+                  {selectedRole === 'student' 
+                    ? '📚 Accederás como estudiante para ver cursos y tu progreso'
+                    : '👨‍🏫 Accederás como instructor para gestionar cursos y estudiantes'
+                  }
+                </p>
+              )}
+            </div>
+
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
                 Correo electrónico

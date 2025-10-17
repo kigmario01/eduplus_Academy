@@ -13,10 +13,25 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      '/api': {
-        target: 'http://localhost:10000',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+      '/api/auth': {
+        target: 'http://localhost:4000',
+        changeOrigin: true
+      },
+      '/api/courses': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
+      },
+      '/api/categories': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
+      },
+      '/api/instructor': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
+      },
+      '/api/admin': {
+        target: 'http://localhost:3001',
+        changeOrigin: true
       }
     }
   }

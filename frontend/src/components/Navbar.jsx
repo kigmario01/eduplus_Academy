@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 
-const Navbar = () => {
+const Navbar = ({ userRole = 'student' }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
@@ -95,6 +95,32 @@ const Navbar = () => {
                 >
                   Dashboard
                 </Link>
+                {/* Instructor Panel Link */}
+                {(userRole === 'instructor' || userRole === 'admin') && (
+                  <Link 
+                    to="/instructor" 
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      scrolled || !isHomePage 
+                        ? 'text-purple-700 hover:text-purple-600' 
+                        : 'text-purple-200 hover:text-purple-100'
+                    }`}
+                  >
+                    Panel Instructor
+                  </Link>
+                )}
+                {/* Admin Panel Link */}
+                {userRole === 'admin' && (
+                  <Link 
+                    to="/admin" 
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      scrolled || !isHomePage 
+                        ? 'text-red-700 hover:text-red-600' 
+                        : 'text-red-200 hover:text-red-100'
+                    }`}
+                  >
+                    Panel Admin
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-all transform hover:-translate-y-0.5 ${
@@ -223,6 +249,34 @@ const Navbar = () => {
               >
                 Dashboard
               </Link>
+              {/* Instructor Panel Link Mobile */}
+              {(userRole === 'instructor' || userRole === 'admin') && (
+                <Link
+                  to="/instructor"
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    scrolled || !isHomePage 
+                      ? 'text-purple-700 hover:text-purple-600 hover:bg-purple-50' 
+                      : 'text-purple-200 hover:bg-white/10'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Panel Instructor
+                </Link>
+              )}
+              {/* Admin Panel Link Mobile */}
+              {userRole === 'admin' && (
+                <Link
+                  to="/admin"
+                  className={`block px-3 py-2 rounded-md text-base font-medium ${
+                    scrolled || !isHomePage 
+                      ? 'text-red-700 hover:text-red-600 hover:bg-red-50' 
+                      : 'text-red-200 hover:bg-white/10'
+                  }`}
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  Panel Admin
+                </Link>
+              )}
               <button
                 onClick={() => {
                   handleLogout();

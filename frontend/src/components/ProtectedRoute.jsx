@@ -35,8 +35,14 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
       }
 
       // Verificar rol si es necesario
-      if (requiredRole && user.role !== requiredRole) {
-        setHasRequiredRole(false);
+      if (requiredRole) {
+        if (Array.isArray(requiredRole)) {
+          // Si requiredRole es un array, verificar si el usuario tiene alguno de los roles
+          setHasRequiredRole(requiredRole.includes(user.role));
+        } else {
+          // Si requiredRole es un string, verificar coincidencia exacta
+          setHasRequiredRole(user.role === requiredRole);
+        }
       }
 
       setIsAuthenticated(true);
@@ -63,7 +69,10 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   }
 
   if (!hasRequiredRole) {
-    return <Navigate to="/dashboard" replace />;
+    // Redirigir según el rol del usuario
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const redirectPath = user.role === 'instructor' ? '/instructor' : '/dashboard';
+    return <Navigate to={redirectPath} replace />;
   }
 
   return children;

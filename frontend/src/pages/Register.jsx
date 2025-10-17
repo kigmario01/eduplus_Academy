@@ -11,6 +11,7 @@ const Register = () => {
     confirmPassword: '',
     role: 'student'
   });
+  const [selectedRole, setSelectedRole] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -24,6 +25,21 @@ const Register = () => {
   };
 
   const validateForm = () => {
+    if (!formData.name.trim()) {
+      setError('El nombre es obligatorio');
+      return false;
+    }
+    
+    if (!formData.lastname.trim()) {
+      setError('El apellido es obligatorio');
+      return false;
+    }
+    
+    if (!selectedRole) {
+      setError('Por favor, selecciona si eres Instructor o Estudiante antes de continuar.');
+      return false;
+    }
+    
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden');
       return false;
@@ -49,8 +65,10 @@ const Register = () => {
       // Extraer solo los campos requeridos por el backend
       const userData = {
         name: formData.name,
+        lastname: formData.lastname,
         email: formData.email,
-        password: formData.password
+        password: formData.password,
+        role: selectedRole
       };
       
       await authService.register(userData);
@@ -150,6 +168,7 @@ const Register = () => {
                     name="lastname"
                     type="text"
                     autoComplete="family-name"
+                    required
                     value={formData.lastname}
                     onChange={handleChange}
                     className="py-3 pl-10 block w-full border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
@@ -237,27 +256,108 @@ const Register = () => {
               </div>
             </div>
 
+            {/* Selección de Rol */}
             <div>
-              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
-                Tipo de cuenta
+              <label className="block text-sm font-medium text-gray-700 mb-4">
+                ¿Cómo te vas a registrar?
               </label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <svg className="h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                  </svg>
-                </div>
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="py-3 pl-10 block w-full border border-gray-300 rounded-lg focus:ring-primary-500 focus:border-primary-500"
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {/* Botón Estudiante */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('student')}
+                  className={`relative p-6 border-2 rounded-xl transition-all duration-200 hover:shadow-lg ${
+                    selectedRole === 'student'
+                      ? 'border-blue-500 bg-blue-50 shadow-md'
+                      : 'border-gray-200 hover:border-blue-300'
+                  }`}
                 >
-                  <option value="student">Estudiante</option>
-                  <option value="instructor">Instructor</option>
-                </select>
+                  <div className="flex flex-col items-center space-y-3">
+                    <div className={`p-3 rounded-full ${
+                      selectedRole === 'student' ? 'bg-blue-100' : 'bg-gray-100'
+                    }`}>
+                      <svg className={`w-8 h-8 ${
+                        selectedRole === 'student' ? 'text-blue-600' : 'text-gray-600'
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                      </svg>
+                    </div>
+                    <div className="text-center">
+                      <h3 className={`font-semibold ${
+                        selectedRole === 'student' ? 'text-blue-900' : 'text-gray-900'
+                      }`}>
+                        Estudiante
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Accede a cursos y aprende nuevas habilidades
+                      </p>
+                    </div>
+                    {selectedRole === 'student' && (
+                      <div className="absolute top-3 right-3">
+                        <div className="bg-blue-500 rounded-full p-1">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </button>
+
+                {/* Botón Instructor */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedRole('instructor')}
+                  className={`relative p-6 border-2 rounded-xl transition-all duration-200 hover:shadow-lg ${
+                    selectedRole === 'instructor'
+                      ? 'border-purple-500 bg-purple-50 shadow-md'
+                      : 'border-gray-200 hover:border-purple-300'
+                  }`}
+                >
+                  <div className="flex flex-col items-center space-y-3">
+                    <div className={`p-3 rounded-full ${
+                      selectedRole === 'instructor' ? 'bg-purple-100' : 'bg-gray-100'
+                    }`}>
+                      <svg className={`w-8 h-8 ${
+                        selectedRole === 'instructor' ? 'text-purple-600' : 'text-gray-600'
+                      }`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2V6m8 0H8" />
+                      </svg>
+                    </div>
+                    <div className="text-center">
+                      <h3 className={`font-semibold ${
+                        selectedRole === 'instructor' ? 'text-purple-900' : 'text-gray-900'
+                      }`}>
+                        Instructor
+                      </h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Crea y gestiona cursos para estudiantes
+                      </p>
+                    </div>
+                    {selectedRole === 'instructor' && (
+                      <div className="absolute top-3 right-3">
+                        <div className="bg-purple-500 rounded-full p-1">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </button>
               </div>
+              
+              {/* Mensaje contextual */}
+              {selectedRole && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-700">
+                    {selectedRole === 'student' 
+                      ? '📚 Te registrarás como estudiante. Podrás inscribirte en cursos y acceder al contenido educativo.'
+                      : '👨‍🏫 Te registrarás como instructor. Podrás crear cursos, gestionar estudiantes y acceder al panel de instructor.'
+                    }
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center">

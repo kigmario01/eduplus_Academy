@@ -1,52 +1,142 @@
-import express from "express";
-import cors from "cors";
-import { pool, runMigrations } from "./config/db.js";
-import authRoutes from "./routes/auth.routes.js";
-import userRoutes from "./routes/user.routes.js";
+import dotenv from 'dotenv';
+dotenv.config();
+
+import express from 'express';
+import cors from 'cors';
+import pool, { runMigrations, testConnection } from './config/db.js';
+import authRoutes from './routes/auth.routes.js';
+import userRoutes from './routes/user.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 
 const app = express();
+const PORT = process.env.PORT || 3001;
 
-// CORS, middlewares, etc.
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-app.use("/api/auth", authRoutes);
-app.use("/users", userRoutes);
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
 
-// health
-app.get("/health", (_, res) => res.json({ ok: true }));
-
-// 🔹 Ruta de prueba base
-app.get("/", (req, res) => {
-  res.json({ mensaje: "Servidor funcionando 🚀" });
+// Health check endpoint
+app.get('/health', async (req, res) => {
+  try {
+    // Verificar conexión a la base de datos
+    await testConnection();
+    
+    res.json({ 
+      status: 'OK', 
+      service: 'auth-service',
+      timestamp: new Date().toISOString(),
+      database: {
+        type: 'PostgreSQL',
+        status: 'Connected',
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT || 5432,
+        database: process.env.DB_NAME || 'eduplus_academy'
+      },
+      environment: process.env.NODE_ENV || 'development'
+    });
+  } catch (error) {
+    res.status(503).json({ 
+      status: 'ERROR', 
+      service: 'auth-service',
+      timestamp: new Date().toISOString(),
+      database: {
+        type: 'PostgreSQL',
+        status: 'Disconnected',
+        error: error.message
+      },
+      environment: process.env.NODE_ENV || 'development'
+    });
+  }
 });
 
-// 🔹 Ruta de prueba para verificar conectividad
-app.get("/api/test", (req, res) => {
-  res.json({ 
-    mensaje: "API funcionando correctamente", 
-    timestamp: new Date().toISOString(),
-    rutas_disponibles: ["/api/auth/register", "/api/auth/login"]
-  });
+// Endpoint para verificar el estado de la base de datos
+app.get('/api/database/status', async (req, res) => {
+  try {
+    await testConnection();
+    
+    // Obtener estadísticas básicas de la base de datos
+    const client = await pool.connect();
+    const stats = await client.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM users) as total_users,
+        (SELECT COUNT(*) FROM course_enrollments) as total_enrollments,
+        (SELECT COUNT(*) FROM user_activities) as total_activities,
+        (SELECT COUNT(*) FROM user_achievements) as total_achievements
+    `);
+    client.release();
+    
+    res.json({
+      status: 'Connected',
+      statistics: stats.rows[0],
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(503).json({
+      status: 'Error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
-// 🔹 Ruta 404 para depurar errores
-app.use((req, res) => {
-  res.status(404).json({ error: "Ruta no encontrada", path: req.originalUrl });
-});
-
-// Conexión y migrations
-pool.connect()
-  .then(async () => {
-    console.log("✅ PostgreSQL conectado");
+// Función para iniciar el servidor
+const startServer = async () => {
+  try {
+    console.log('🔄 Iniciando Auth Service...');
+    
+    // Verificar conexión a PostgreSQL
+    console.log('🔍 Verificando conexión a PostgreSQL...');
+    await testConnection();
+    
+    // Ejecutar migraciones
+    console.log('🔄 Ejecutando migraciones de base de datos...');
     await runMigrations();
-    console.log("✅ Tabla 'users' lista");
-  })
-  .catch(err => console.error("❌ Error de BD:", err));
+    
+    // Iniciar servidor
+    app.listen(PORT, () => {
+      console.log('✅ Auth Service iniciado exitosamente');
+      console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
+      console.log(`📊 Base de datos: PostgreSQL (${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432})`);
+      console.log(`🌐 Entorno: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      console.log(`📈 Database status: http://localhost:${PORT}/api/database/status`);
+    });
+  } catch (error) {
+    console.error('❌ Error al iniciar el servidor:', error.message);
+    console.error('💡 Asegúrate de que PostgreSQL esté ejecutándose y accesible');
+    console.error('💡 Verifica las variables de entorno de conexión a la base de datos');
+    process.exit(1);
+  }
+};
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`🚀 Servidor escuchando en ${PORT}`);
+// Manejar cierre graceful del servidor
+process.on('SIGINT', async () => {
+  console.log('\n🔄 Cerrando Auth Service...');
+  try {
+    await pool.end();
+    console.log('✅ Conexiones de base de datos cerradas');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error al cerrar conexiones:', error);
+    process.exit(1);
+  }
 });
 
-export default app;
+process.on('SIGTERM', async () => {
+  console.log('\n🔄 Cerrando Auth Service...');
+  try {
+    await pool.end();
+    console.log('✅ Conexiones de base de datos cerradas');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error al cerrar conexiones:', error);
+    process.exit(1);
+  }
+});
+
+startServer();

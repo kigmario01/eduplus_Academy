@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "commitSha": "abc123def456",
+  "commitMessage": "Implementar sistema de notificaciones de actualización",
+  "buildDate": "2024-01-15T10:30:00.000Z",
+  "branch": "main",
+  "buildNumber": "42",
+  "repository": "tu-usuario/EduPlus_academy",
+  "actor": "developer"
+}

@@ -1,10 +1,13 @@
 import { Link } from 'react-router-dom';
 import heroBackground from '../assets/hero-bg.svg';
 import Carousel from '../components/Carousel';
+import UpdateNotification from '../components/UpdateNotification';
 
 const Landing = () => {
   return (
     <div className="bg-white">
+      {/* Update Notification */}
+      <UpdateNotification />
       {/* Hero Section */}
       <div className="relative min-h-screen flex items-center bg-gradient-hero overflow-hidden">
         {/* Animated Background Elements */}

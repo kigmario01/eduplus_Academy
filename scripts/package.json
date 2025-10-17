@@ -1,0 +1,18 @@
+{
+  "name": "eduplus-migration-scripts",
+  "version": "1.0.0",
+  "description": "Scripts de migración para EduPlus Academy",
+  "main": "migrate-neon.js",
+  "scripts": {
+    "migrate": "node migrate-neon.js",
+    "migrate:neon": "node migrate-neon.js",
+    "test:neon": "node test-neon-connection.js",
+    "test:connection": "node test-neon-connection.js"
+  },
+  "dependencies": {
+    "pg": "^8.11.3"
+  },
+  "keywords": ["migration", "database", "neon", "postgresql"],
+  "author": "EduPlus Academy",
+  "license": "MIT"
+}
