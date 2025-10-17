@@ -39,12 +39,12 @@ export const getAllUsers = async (req, res) => {
     // Filtro de búsqueda
     if (search) {
       paramCount++;
-      whereClause += ` AND (first_name ILIKE $${paramCount} OR last_name ILIKE $${paramCount} OR email ILIKE $${paramCount})`;
+      whereClause += ` AND (name ILIKE $${paramCount} OR lastname ILIKE $${paramCount} OR email ILIKE $${paramCount})`;
       queryParams.push(`%${search}%`);
     }
 
     // Validar campo de ordenamiento
-    const allowedSortFields = ['created_at', 'first_name', 'last_name', 'email', 'role'];
+    const allowedSortFields = ['created_at', 'name', 'lastname', 'email', 'role'];
     const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
     const validSortOrder = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
@@ -52,8 +52,8 @@ export const getAllUsers = async (req, res) => {
     const usersQuery = `
       SELECT 
         id, 
-        first_name as name, 
-        last_name as lastname, 
+        name, 
+        lastname, 
         email, 
         role, 
         is_active, 

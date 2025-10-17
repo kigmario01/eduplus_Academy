@@ -4,7 +4,7 @@ class User {
   // Buscar usuario por email
   static async findOne({ email }) {
     const query = `
-      SELECT id, first_name as name, last_name as lastname, email, password_hash as password, role, is_active, email_verified, created_at
+      SELECT id, name, lastname, email, password_hash as password, role, is_active, email_verified, created_at
       FROM users 
       WHERE email = $1 AND is_active = true
     `;
@@ -20,9 +20,9 @@ class User {
       const { name, lastname, email, password, role = 'student' } = userData;
       
       const query = `
-        INSERT INTO users (first_name, last_name, email, password_hash, role, is_active, email_verified, created_at, updated_at)
+        INSERT INTO users (name, lastname, email, password_hash, role, is_active, email_verified, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, true, false, NOW(), NOW())
-        RETURNING id, first_name as name, last_name as lastname, email, role, is_active, email_verified, created_at
+        RETURNING id, name, lastname, email, role, is_active, email_verified, created_at
       `;
       
       const values = [name, lastname, email, password, role];
@@ -39,7 +39,7 @@ class User {
   // Buscar usuario por ID
   static async findById(id) {
     const query = `
-      SELECT id, first_name as name, last_name as lastname, email, role, is_active, email_verified, created_at
+      SELECT id, name, lastname, email, role, is_active, email_verified, created_at
       FROM users 
       WHERE id = $1 AND is_active = true
     `;
@@ -74,7 +74,7 @@ class User {
   // Obtener todos los usuarios (sin contraseñas)
   static async findAll() {
     const query = `
-      SELECT id, first_name as name, last_name as lastname, email, role, is_active, email_verified, created_at, updated_at
+      SELECT id, name, lastname, email, role, is_active, email_verified, created_at, updated_at
       FROM users 
       WHERE is_active = true
       ORDER BY created_at DESC
