@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpiar Notificaciones - EduPlus</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        .success {
+            color: #059669;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔔 Gestión de Notificaciones</h1>
+        <p>Usa esta herramienta para limpiar el localStorage y forzar que aparezca la notificación de actualización con los datos más recientes.</p>
+        
+        <button onclick="clearNotifications()">Limpiar Notificaciones</button>
+        <button onclick="goToApp()">Ir a la App</button>
+        
+        <div id="message"></div>
+    </div>
+
+    <script>
+        function clearNotifications() {
+            localStorage.removeItem('lastSeenUpdate');
+            document.getElementById('message').innerHTML = 
+                '<div class="success">✅ Notificaciones limpiadas. Ve a la app para ver la nueva notificación.</div>';
+        }
+
+        function goToApp() {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>
