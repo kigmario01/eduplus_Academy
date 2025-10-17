@@ -39,30 +39,30 @@ export const getAllUsers = async (req, res) => {
     // Filtro de búsqueda
     if (search) {
       paramCount++;
-      whereClause += ` AND (name ILIKE $${paramCount} OR lastname ILIKE $${paramCount} OR email ILIKE $${paramCount})`;
+      whereClause += ` AND (nombre ILIKE $${paramCount} OR apellido ILIKE $${paramCount} OR correo_electronico ILIKE $${paramCount})`;
       queryParams.push(`%${search}%`);
     }
 
     // Validar campo de ordenamiento
-    const allowedSortFields = ['created_at', 'name', 'lastname', 'email', 'role'];
-    const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const allowedSortFields = ['creado_at', 'nombre', 'apellido', 'correo_electronico', 'rol'];
+    const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'creado_at';
     const validSortOrder = sortOrder.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
     // Query para obtener usuarios
     const usersQuery = `
       SELECT 
         id, 
-        name, 
-        lastname, 
-        email, 
-        role, 
-        is_active, 
-        email_verified, 
+        nombre, 
+        apellido, 
+        correo_electronico, 
+        rol, 
+        es_activo, 
+        email_verificado, 
         profile_image_url,
         bio,
-        created_at, 
-        updated_at
-      FROM users 
+        creado_at, 
+        actualizado_at
+      FROM usuarios 
       ${whereClause}
       ORDER BY ${validSortBy} ${validSortOrder}
       LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}
@@ -73,7 +73,7 @@ export const getAllUsers = async (req, res) => {
     // Query para contar total
     const countQuery = `
       SELECT COUNT(*) as total 
-      FROM users 
+      FROM usuarios 
       ${whereClause}
     `;
 
@@ -352,13 +352,13 @@ export const getUserStats = async (req, res) => {
     const statsQuery = `
       SELECT 
         COUNT(*) as total_users,
-        COUNT(CASE WHEN role = 'student' THEN 1 END) as total_students,
-        COUNT(CASE WHEN role = 'instructor' THEN 1 END) as total_instructors,
-        COUNT(CASE WHEN role = 'admin' THEN 1 END) as total_admins,
-        COUNT(CASE WHEN is_active = true THEN 1 END) as active_users,
-        COUNT(CASE WHEN email_verified = true THEN 1 END) as verified_users,
-        COUNT(CASE WHEN created_at >= NOW() - INTERVAL '30 days' THEN 1 END) as new_users_last_month
-      FROM users
+        COUNT(CASE WHEN rol = 'student' THEN 1 END) as total_students,
+        COUNT(CASE WHEN rol = 'instructor' THEN 1 END) as total_instructors,
+        COUNT(CASE WHEN rol = 'admin' THEN 1 END) as total_admins,
+        COUNT(CASE WHEN es_activo = true THEN 1 END) as active_users,
+        COUNT(CASE WHEN email_verificado = true THEN 1 END) as verified_users,
+        COUNT(CASE WHEN creado_at >= NOW() - INTERVAL '30 days' THEN 1 END) as new_users_last_month
+      FROM usuarios
     `;
 
     const result = await pool.query(statsQuery);
