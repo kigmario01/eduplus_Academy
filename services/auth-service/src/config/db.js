@@ -1,88 +1,42 @@
 import pkg from 'pg';
 const { Pool } = pkg;
 
-console.log('🔧 Configuración de conexión a PostgreSQL (Auth-Service)...');
+console.log("🔧 Inicializando conexión a PostgreSQL (Auth-Service)...");
 
-// Usar la URL completa de conexión
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  console.error('❌ No se encontró DATABASE_URL en las variables de entorno.');
-  process.exit(1);
-}
-
-// Crear el pool con la conexión a Neon
 const pool = new Pool({
-  connectionString,
-  ssl: {
-    require: true,
-    rejectUnauthorized: false, // obligatorio en Render + Neon
-  },
-  connectionTimeoutMillis: 10000,
-  idleTimeoutMillis: 30000,
+  connectionString: process.env.DATABASE_URL,
+  ssl: { require: true, rejectUnauthorized: false },
+  connectionTimeoutMillis: 10000, // Espera máxima para conexión
+  idleTimeoutMillis: 10000,       // Cierra rápido conexiones inactivas
+  max: 10                         // Evita exceso de conexiones simultáneas
 });
 
-// Eventos de conexión
-pool.on('connect', () => console.log('✅ PostgreSQL conectado correctamente'));
+// Evento de conexión
+pool.on('connect', () => console.log('✅ PostgreSQL conectado'));
 pool.on('error', (err) => {
-  console.error('❌ Error inesperado en el pool de PostgreSQL:', err);
-  process.exit(-1);
+  console.error('⚠️ Error inesperado en la conexión PostgreSQL:', err.message);
+  if (err.code === 'ECONNRESET' || err.message.includes('Connection terminated unexpectedly')) {
+    console.log('🔁 Intentando reconexión automática...');
+  }
 });
 
-// -----------------------------
-// Función de migraciones
-// -----------------------------
-export const runMigrations = async () => {
-  const client = await pool.connect();
+// Manejo global de errores no controlados
+process.on('unhandledRejection', (err) => {
+  console.error('🚨 Unhandled Rejection:', err.message);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('🚨 Uncaught Exception:', err.message);
+});
+
+// Ping periódico para mantener conexión activa
+setInterval(async () => {
   try {
-    console.log('🚀 Ejecutando migraciones...');
-
-    await client.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-    await client.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto"');
-
-    // Tabla de usuarios
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        uuid UUID DEFAULT uuid_generate_v4() UNIQUE NOT NULL,
-        name VARCHAR(100) NOT NULL,
-        lastname VARCHAR(100) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'student' CHECK (role IN ('student', 'instructor', 'admin')),
-        avatar_url VARCHAR(500),
-        phone VARCHAR(20),
-        bio TEXT,
-        is_active BOOLEAN DEFAULT true,
-        email_verified BOOLEAN DEFAULT false,
-        last_login TIMESTAMP,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-
-    console.log('✅ Tabla users lista');
-
-  } catch (error) {
-    console.error('❌ Error en migraciones:', error);
-    throw error;
-  } finally {
-    client.release();
+    await pool.query('SELECT 1');
+    console.log('🔄 Manteniendo conexión activa...');
+  } catch (e) {
+    console.error('⚠️ Ping DB falló:', e.message);
   }
-};
-
-// -----------------------------
-// Función de prueba de conexión
-// -----------------------------
-export const testConnection = async () => {
-  try {
-    const result = await pool.query('SELECT NOW()');
-    console.log('✅ Conexión a PostgreSQL exitosa:', result.rows[0].now);
-    return true;
-  } catch (error) {
-    console.error('❌ Error de conexión a PostgreSQL:', error.message);
-    throw error;
-  }
-};
+}, 4 * 60 * 1000); // cada 4 minutos
 
 export default pool;

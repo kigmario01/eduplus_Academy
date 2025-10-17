@@ -3,7 +3,7 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
-import pool, { runMigrations, testConnection } from './config/db.js';
+import pool from './config/db.js';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import adminRoutes from './routes/admin.routes.js';
@@ -24,7 +24,7 @@ app.use('/api/admin', adminRoutes);
 app.get('/health', async (req, res) => {
   try {
     // Verificar conexión a la base de datos
-    await testConnection();
+    await pool.query('SELECT 1');
     
     res.json({ 
       status: 'OK', 
@@ -57,7 +57,7 @@ app.get('/health', async (req, res) => {
 // Endpoint para verificar el estado de la base de datos
 app.get('/api/database/status', async (req, res) => {
   try {
-    await testConnection();
+    await pool.query('SELECT 1');
     
     // Obtener estadísticas básicas de la base de datos
     const client = await pool.connect();
@@ -91,11 +91,7 @@ const startServer = async () => {
     
     // Verificar conexión a PostgreSQL
     console.log('🔍 Verificando conexión a PostgreSQL...');
-    await testConnection();
-    
-    // Ejecutar migraciones
-    console.log('🔄 Ejecutando migraciones de base de datos...');
-    await runMigrations();
+    await pool.query('SELECT 1');
     
     // Iniciar servidor
     app.listen(PORT, () => {
