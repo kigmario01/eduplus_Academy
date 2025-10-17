@@ -1,6 +1,6 @@
 import slugify from 'slugify';
 import Joi from 'joi';
-import { db } from '../config/db.js';
+import db from '../config/db.js';
 
 // Esquema de validación para cursos
 const courseSchema = Joi.object({

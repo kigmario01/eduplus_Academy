@@ -3,7 +3,7 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
-import { db, runMigrations } from './config/db.js';
+import db from './config/db.js';
 import courseRoutes from './routes/courseRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import instructorRoutes from './routes/instructorRoutes.js';
@@ -54,7 +54,8 @@ app.use('*', (req, res) => {
 // Start server
 const startServer = async () => {
   try {
-    await runMigrations();
+    // Verificar conexión a la base de datos
+    await db.query('SELECT 1');
     console.log('✅ Course Service connected to PostgreSQL database');
     
     app.listen(PORT, () => {

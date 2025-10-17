@@ -1,7 +1,7 @@
 import express from 'express';
 import { enrollmentController } from '../controllers/enrollmentController.js';
 import { authenticateToken } from '../middleware/auth.js';
-import { db } from '../config/db.js';
+import db from '../config/db.js';
 
 const router = express.Router();
 

@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { db } from '../config/db.js';
+import db from '../config/db.js';
 
 // Esquemas de validación
 const conversationSchema = Joi.object({

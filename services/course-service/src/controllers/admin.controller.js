@@ -1,4 +1,4 @@
-import { db } from '../config/db.js';
+import db from '../config/db.js';
 
 // Obtener todos los cursos con información detallada para administración
 export const getAllCoursesAdmin = async (req, res) => {
