@@ -7,9 +7,9 @@ export const getUserSummary = async (req, res) => {
 
     // Obtener información del usuario
     const userQuery = await pool.query(`
-      SELECT id, nombre, apellido, correo_electronico, rol, avatar, creado_at
-      FROM usuarios 
-      WHERE id = $1
+      SELECT id, name, lastname, email, role, avatar, created_at
+      FROM users 
+      WHERE id = $1 AND is_active = true
     `, [userId]);
 
     if (userQuery.rows.length === 0) {
@@ -88,9 +88,9 @@ export const getUserSummary = async (req, res) => {
       points: totalPoints,
       user: {
         id: user.id,
-        name: user.apellido ? `${user.nombre} ${user.apellido}` : user.nombre,
-        email: user.correo_electronico,
-        role: user.rol,
+        name: user.lastname ? `${user.name} ${user.lastname}` : user.name,
+        email: user.email,
+        role: user.role,
         avatar: user.avatar
       },
       currentStreak,

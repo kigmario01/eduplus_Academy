@@ -4,9 +4,9 @@ class User {
   // Buscar usuario por email
   static async findOne({ email }) {
     const query = `
-      SELECT id, nombre, apellido, correo_electronico, contraseña, rol, es_activo, email_verificado, creado_at
-      FROM usuarios 
-      WHERE correo_electronico = $1 AND es_activo = true
+      SELECT id, name, lastname, email, password, role, is_active, email_verified, created_at
+      FROM users 
+      WHERE email = $1 AND is_active = true
     `;
     
     const result = await pool.query(query, [email]);
@@ -20,9 +20,9 @@ class User {
       const { name, lastname, email, password, role = 'student' } = userData;
       
       const query = `
-        INSERT INTO usuarios (nombre, apellido, correo_electronico, contraseña, rol, es_activo, email_verificado, creado_at, actualizado_at)
+        INSERT INTO users (name, lastname, email, password, role, is_active, email_verified, created_at, updated_at)
         VALUES ($1, $2, $3, $4, $5, true, false, NOW(), NOW())
-        RETURNING id, nombre, apellido, correo_electronico, rol, es_activo, email_verificado, creado_at
+        RETURNING id, name, lastname, email, role, is_active, email_verified, created_at
       `;
       
       const values = [name, lastname, email, password, role];
@@ -39,9 +39,9 @@ class User {
   // Buscar usuario por ID
   static async findById(id) {
     const query = `
-      SELECT id, nombre, apellido, correo_electronico, rol, es_activo, email_verificado, creado_at
-      FROM usuarios 
-      WHERE id = $1 AND es_activo = true
+      SELECT id, name, lastname, email, role, is_active, email_verified, created_at
+      FROM users 
+      WHERE id = $1 AND is_active = true
     `;
     
     const result = await pool.query(query, [id]);
@@ -51,8 +51,8 @@ class User {
   // Actualizar último login
   static async updateLastLogin(id) {
     const query = `
-      UPDATE usuarios 
-      SET actualizado_at = NOW()
+      UPDATE users 
+      SET updated_at = NOW()
       WHERE id = $1
     `;
     
@@ -63,8 +63,8 @@ class User {
   static async existsByEmail(email) {
     const query = `
       SELECT COUNT(*) as count
-      FROM usuarios 
-      WHERE correo_electronico = $1 AND es_activo = true
+      FROM users 
+      WHERE email = $1 AND is_active = true
     `;
     
     const result = await pool.query(query, [email]);
@@ -74,10 +74,10 @@ class User {
   // Obtener todos los usuarios (sin contraseñas)
   static async findAll() {
     const query = `
-      SELECT id, nombre, apellido, correo_electronico, rol, es_activo, email_verificado, creado_at, actualizado_at
-      FROM usuarios 
-      WHERE es_activo = true
-      ORDER BY creado_at DESC
+      SELECT id, name, lastname, email, role, is_active, email_verified, created_at, updated_at
+      FROM users 
+      WHERE is_active = true
+      ORDER BY created_at DESC
     `;
     
     const result = await pool.query(query);
