@@ -9,13 +9,13 @@ import userRoutes from './routes/user.routes.js';
 import adminRoutes from './routes/admin.routes.js';
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 4000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Routes
+// Rutas principales
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
@@ -23,11 +23,9 @@ app.use('/api/admin', adminRoutes);
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
-    // Verificar conexión a la base de datos
     await pool.query('SELECT 1');
-    
-    res.json({ 
-      status: 'OK', 
+    res.json({
+      status: 'OK',
       service: 'auth-service',
       timestamp: new Date().toISOString(),
       database: {
@@ -40,8 +38,8 @@ app.get('/health', async (req, res) => {
       environment: process.env.NODE_ENV || 'development'
     });
   } catch (error) {
-    res.status(503).json({ 
-      status: 'ERROR', 
+    res.status(503).json({
+      status: 'ERROR',
       service: 'auth-service',
       timestamp: new Date().toISOString(),
       database: {
@@ -54,12 +52,10 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// Endpoint para verificar el estado de la base de datos
+// Endpoint para verificar estadísticas básicas de la base de datos
 app.get('/api/database/status', async (req, res) => {
   try {
     await pool.query('SELECT 1');
-    
-    // Obtener estadísticas básicas de la base de datos
     const client = await pool.connect();
     const stats = await client.query(`
       SELECT 
@@ -69,7 +65,7 @@ app.get('/api/database/status', async (req, res) => {
         (SELECT COUNT(*) FROM user_achievements) as total_achievements
     `);
     client.release();
-    
+
     res.json({
       status: 'Connected',
       statistics: stats.rows[0],
@@ -88,19 +84,17 @@ app.get('/api/database/status', async (req, res) => {
 const startServer = async () => {
   try {
     console.log('🔄 Iniciando Auth Service...');
-    
-    // Verificar conexión a PostgreSQL
     console.log('🔍 Verificando conexión a PostgreSQL...');
     await pool.query('SELECT 1');
-    
-    // Iniciar servidor
-    app.listen(PORT, () => {
+
+    // Escuchar en todas las interfaces (clave para Docker)
+    app.listen(PORT, '0.0.0.0', () => {
       console.log('✅ Auth Service iniciado exitosamente');
       console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
       console.log(`📊 Base de datos: PostgreSQL (${process.env.DB_HOST || 'localhost'}:${process.env.DB_PORT || 5432})`);
       console.log(`🌐 Entorno: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-      console.log(`📈 Database status: http://localhost:${PORT}/api/database/status`);
+      console.log(`🔗 Health check: http://0.0.0.0:${PORT}/health`);
+      console.log(`📈 Database status: http://0.0.0.0:${PORT}/api/database/status`);
     });
   } catch (error) {
     console.error('❌ Error al iniciar el servidor:', error.message);
@@ -110,7 +104,7 @@ const startServer = async () => {
   }
 };
 
-// Manejar cierre graceful del servidor
+// Cierre controlado del servidor
 process.on('SIGINT', async () => {
   console.log('\n🔄 Cerrando Auth Service...');
   try {

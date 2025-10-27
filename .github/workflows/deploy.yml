@@ -1,6 +1,6 @@
 name: Deploy EduPlus Academy
 
-on:
+on: 
   push:
     branches: [ main ]
   pull_request:
@@ -25,7 +25,7 @@ jobs:
         run: |
           cd frontend
           npm ci
-      
+        
       - name: Generate Build Info
         run: |
           cd frontend
