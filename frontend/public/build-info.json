@@ -1,10 +1,10 @@
 {
   "version": "1.0.0",
-  "commitSha": "cab393910b71d87d9024b3584751af772c3fa109",
-  "commitMessage": "fix: revert to 'users' table with English column names",
-  "buildDate": "2025-10-17T18:09:49.000Z",
+  "commitSha": "1bb34cb5abc5b2674804293b87050ba49bc66ef5",
+  "commitMessage": "feat: update notifications with real commit data",
+  "buildDate": "2025-10-17T18:15:30.000Z",
   "branch": "main",
-  "buildNumber": "1",
+  "buildNumber": "2",
   "repository": "kigmario01/eduplus_Academy",
   "actor": "kigmario01"
 }

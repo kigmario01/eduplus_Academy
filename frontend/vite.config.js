@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url'
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: './', // 👈 Esto hace que las rutas sean relativas (funciona dentro de Docker)
   plugins: [react()],
   resolve: {
     alias: {
@@ -11,28 +12,29 @@ export default defineConfig({
     }
   },
   server: {
-    port: 3000,
-    proxy: {
-      '/api/auth': {
-        target: 'http://localhost:4000',
-        changeOrigin: true
-      },
-      '/api/courses': {
-        target: 'http://localhost:3001',
-        changeOrigin: true
-      },
-      '/api/categories': {
-        target: 'http://localhost:3001',
-        changeOrigin: true
-      },
-      '/api/instructor': {
-        target: 'http://localhost:3001',
-        changeOrigin: true
-      },
-      '/api/admin': {
-        target: 'http://localhost:3001',
-        changeOrigin: true
-      }
+  port: 3000,
+  proxy: {
+    '/api/auth': {
+      target: 'http://eduplus-auth:4000',
+      changeOrigin: true
+    },
+    '/api/courses': {
+      target: 'http://eduplus-course:5002',
+      changeOrigin: true
+    },
+    '/api/categories': {
+      target: 'http://eduplus-course:5002',
+      changeOrigin: true
+    },
+    '/api/instructor': {
+      target: 'http://eduplus-course:5002',
+      changeOrigin: true
+    },
+    '/api/admin': {
+      target: 'http://eduplus-course:5002',
+      changeOrigin: true
     }
   }
-})
+}
+}
+)  

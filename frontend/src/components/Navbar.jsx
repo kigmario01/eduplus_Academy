@@ -6,24 +6,15 @@ const Navbar = ({ userRole = 'student' }) => {
   const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  
-  // Verificar si hay un token en localStorage
+
   const isLoggedIn = localStorage.getItem('token');
-  
-  // Efecto para detectar scroll y cambiar el estilo del navbar
+
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 10) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
+      setScrolled(window.scrollY > 10);
     };
-
     window.addEventListener('scroll', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const handleLogout = () => {
@@ -32,248 +23,156 @@ const Navbar = ({ userRole = 'student' }) => {
     navigate('/login');
   };
 
-  // Determinar si estamos en la página de inicio para aplicar estilos diferentes
   const isHomePage = location.pathname === '/';
 
   return (
-    <nav 
+    <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled || !isHomePage 
-          ? 'bg-white shadow-md py-2' 
-          : 'bg-transparent py-4'
+        scrolled || !isHomePage
+          ? 'bg-[#0b0121]/95 backdrop-blur-lg border-b border-white/10 shadow-lg py-2'
+          : 'bg-gradient-to-r from-[#0b0121]/95 via-[#1a0333]/95 to-[#0b0121]/95 backdrop-blur-lg py-4'
       }`}
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
+          {/* Logo */}
           <div className="flex items-center">
-            <Link 
-              to="/" 
-              className={`text-2xl font-bold flex items-center space-x-2 ${
-                scrolled || !isHomePage ? 'text-primary-600' : 'text-white'
-              }`}
+            <Link
+              to="/"
+              className="text-2xl font-bold flex items-center space-x-2 text-white"
             >
-              <svg className="w-8 h-8" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="currentColor" />
-                <path d="M2 17L12 22L22 17" fill="currentColor" />
-                <path d="M2 12L12 17L22 12" fill="currentColor" />
+              <svg
+                className="w-8 h-8 text-pink-500"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path d="M12 2L2 7L12 12L22 7L12 2Z" />
+                <path d="M2 17L12 22L22 17" />
+                <path d="M2 12L12 17L22 12" />
               </svg>
-              <span>EduPlus Academy</span>
+              <span className="bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-600 bg-clip-text text-transparent">
+                EduPlus Academy
+              </span>
             </Link>
           </div>
-          
+
           {/* Desktop menu */}
           <div className="hidden md:flex items-center space-x-6">
-            <Link 
-              to="/" 
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                scrolled || !isHomePage 
-                  ? 'text-gray-700 hover:text-primary-600' 
-                  : 'text-white hover:text-secondary-300'
-              }`}
+            <Link
+              to="/"
+              className="px-3 py-2 rounded-md text-sm font-medium text-neutral-200 hover:text-white transition-colors"
             >
               Inicio
             </Link>
-            <Link 
-              to="/courses" 
-              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                scrolled || !isHomePage 
-                  ? 'text-gray-700 hover:text-primary-600' 
-                  : 'text-white hover:text-secondary-300'
-              }`}
+            <Link
+              to="/courses"
+              className="px-3 py-2 rounded-md text-sm font-medium text-neutral-200 hover:text-white transition-colors"
             >
               Cursos
             </Link>
+
             {isLoggedIn ? (
               <>
-                <Link 
-                  to="/dashboard" 
-                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    scrolled || !isHomePage 
-                      ? 'text-gray-700 hover:text-primary-600' 
-                      : 'text-white hover:text-secondary-300'
-                  }`}
+                <Link
+                  to="/dashboard"
+                  className="px-3 py-2 rounded-md text-sm font-medium text-neutral-200 hover:text-pink-400 transition-colors"
                 >
                   Dashboard
                 </Link>
-                {/* Instructor Panel Link */}
+
                 {(userRole === 'instructor' || userRole === 'admin') && (
-                  <Link 
-                    to="/instructor" 
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      scrolled || !isHomePage 
-                        ? 'text-purple-700 hover:text-purple-600' 
-                        : 'text-purple-200 hover:text-purple-100'
-                    }`}
+                  <Link
+                    to="/instructor"
+                    className="px-3 py-2 rounded-md text-sm font-medium text-fuchsia-400 hover:text-pink-400 transition-colors"
                   >
                     Panel Instructor
                   </Link>
                 )}
-                {/* Admin Panel Link */}
+
                 {userRole === 'admin' && (
-                  <Link 
-                    to="/admin" 
-                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      scrolled || !isHomePage 
-                        ? 'text-red-700 hover:text-red-600' 
-                        : 'text-red-200 hover:text-red-100'
-                    }`}
+                  <Link
+                    to="/admin"
+                    className="px-3 py-2 rounded-md text-sm font-medium text-red-400 hover:text-red-300 transition-colors"
                   >
                     Panel Admin
                   </Link>
                 )}
+
                 <button
                   onClick={handleLogout}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all transform hover:-translate-y-0.5 ${
-                    scrolled || !isHomePage 
-                      ? 'bg-white text-primary-600 border border-primary-600 hover:bg-primary-50' 
-                      : 'bg-white/10 text-white border border-white/30 backdrop-blur-sm hover:bg-white/20'
-                  }`}
+                  className="px-4 py-2 rounded-md text-sm font-medium bg-transparent border border-white/20 text-white hover:bg-white/10 transition-all duration-300"
                 >
                   Cerrar Sesión
                 </button>
               </>
             ) : (
               <>
-                <Link 
-                  to="/login" 
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all transform hover:-translate-y-0.5 ${
-                    scrolled || !isHomePage 
-                      ? 'bg-white text-primary-600 border border-primary-600 hover:bg-primary-50' 
-                      : 'bg-white/10 text-white border border-white/30 backdrop-blur-sm hover:bg-white/20'
-                  }`}
+                <Link
+                  to="/login"
+                  className="px-4 py-2 rounded-md text-sm font-medium border border-pink-500 text-pink-400 hover:bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-600 hover:text-white transition-all duration-300 shadow-md hover:shadow-pink-500/30"
                 >
                   Iniciar Sesión
                 </Link>
-                <Link 
-                  to="/register" 
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 ${
-                    scrolled || !isHomePage 
-                      ? 'bg-primary-600 text-white hover:bg-primary-700' 
-                      : 'bg-secondary-600 text-white hover:bg-secondary-700'
-                  }`}
+                <Link
+                  to="/register"
+                  className="px-4 py-2 rounded-md text-sm font-medium bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-600 text-white hover:from-pink-500 hover:to-fuchsia-600 shadow-md hover:shadow-pink-500/40 transition-all duration-300"
                 >
                   Registrarse
                 </Link>
               </>
             )}
           </div>
-          
-          {/* Mobile menu button */}
+
+          {/* Mobile button */}
           <div className="flex md:hidden items-center">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className={`inline-flex items-center justify-center p-2 rounded-md focus:outline-none transition-colors ${
-                scrolled || !isHomePage 
-                  ? 'text-gray-500 hover:text-gray-600 hover:bg-gray-100' 
-                  : 'text-white hover:text-white hover:bg-white/10'
-              }`}
-              aria-expanded="false"
+              className="p-2 rounded-md text-white hover:bg-white/10 transition"
             >
-              <span className="sr-only">Abrir menú principal</span>
-              {/* Icon when menu is closed */}
               <svg
                 className={`${isMenuOpen ? 'hidden' : 'block'} h-6 w-6`}
-                xmlns="http://www.w3.org/2000/svg"
                 fill="none"
-                viewBox="0 0 24 24"
                 stroke="currentColor"
-                aria-hidden="true"
+                viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M4 6h16M4 12h16M4 18h16"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              {/* Icon when menu is open */}
               <svg
                 className={`${isMenuOpen ? 'block' : 'hidden'} h-6 w-6`}
-                xmlns="http://www.w3.org/2000/svg"
                 fill="none"
-                viewBox="0 0 24 24"
                 stroke="currentColor"
-                aria-hidden="true"
+                viewBox="0 0 24 24"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile menu, show/hide based on menu state */}
-      <div 
-        className={`${isMenuOpen ? 'block' : 'hidden'} md:hidden transition-all duration-300 ${
-          scrolled || !isHomePage ? 'bg-white' : 'bg-primary-700/95 backdrop-blur-md'
-        }`}
+      {/* Mobile menu */}
+      <div
+        className={`${isMenuOpen ? 'block' : 'hidden'} md:hidden bg-[#0b0121]/95 backdrop-blur-lg border-t border-white/10`}
       >
-        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-          <Link
-            to="/"
-            className={`block px-3 py-2 rounded-md text-base font-medium ${
-              scrolled || !isHomePage 
-                ? 'text-gray-700 hover:text-primary-600 hover:bg-gray-50' 
-                : 'text-white hover:bg-white/10'
-            }`}
-            onClick={() => setIsMenuOpen(false)}
-          >
+        <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 text-neutral-200">
+          <Link to="/" className="block px-3 py-2 rounded-md hover:text-white" onClick={() => setIsMenuOpen(false)}>
             Inicio
           </Link>
-          <Link
-            to="/courses"
-            className={`block px-3 py-2 rounded-md text-base font-medium ${
-              scrolled || !isHomePage 
-                ? 'text-gray-700 hover:text-primary-600 hover:bg-gray-50' 
-                : 'text-white hover:bg-white/10'
-            }`}
-            onClick={() => setIsMenuOpen(false)}
-          >
+          <Link to="/courses" className="block px-3 py-2 rounded-md hover:text-white" onClick={() => setIsMenuOpen(false)}>
             Cursos
           </Link>
           {isLoggedIn ? (
             <>
-              <Link
-                to="/dashboard"
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  scrolled || !isHomePage 
-                    ? 'text-gray-700 hover:text-primary-600 hover:bg-gray-50' 
-                    : 'text-white hover:bg-white/10'
-                }`}
-                onClick={() => setIsMenuOpen(false)}
-              >
+              <Link to="/dashboard" className="block px-3 py-2 rounded-md hover:text-pink-400" onClick={() => setIsMenuOpen(false)}>
                 Dashboard
               </Link>
-              {/* Instructor Panel Link Mobile */}
               {(userRole === 'instructor' || userRole === 'admin') && (
-                <Link
-                  to="/instructor"
-                  className={`block px-3 py-2 rounded-md text-base font-medium ${
-                    scrolled || !isHomePage 
-                      ? 'text-purple-700 hover:text-purple-600 hover:bg-purple-50' 
-                      : 'text-purple-200 hover:bg-white/10'
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
+                <Link to="/instructor" className="block px-3 py-2 rounded-md text-fuchsia-400 hover:text-pink-400" onClick={() => setIsMenuOpen(false)}>
                   Panel Instructor
                 </Link>
               )}
-              {/* Admin Panel Link Mobile */}
               {userRole === 'admin' && (
-                <Link
-                  to="/admin"
-                  className={`block px-3 py-2 rounded-md text-base font-medium ${
-                    scrolled || !isHomePage 
-                      ? 'text-red-700 hover:text-red-600 hover:bg-red-50' 
-                      : 'text-red-200 hover:bg-white/10'
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
+                <Link to="/admin" className="block px-3 py-2 rounded-md text-red-400 hover:text-red-300" onClick={() => setIsMenuOpen(false)}>
                   Panel Admin
                 </Link>
               )}
@@ -282,11 +181,7 @@ const Navbar = ({ userRole = 'student' }) => {
                   handleLogout();
                   setIsMenuOpen(false);
                 }}
-                className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium ${
-                  scrolled || !isHomePage 
-                    ? 'text-gray-700 hover:text-primary-600 hover:bg-gray-50' 
-                    : 'text-white hover:bg-white/10'
-                }`}
+                className="block w-full text-left px-3 py-2 rounded-md hover:text-white"
               >
                 Cerrar Sesión
               </button>
@@ -295,22 +190,14 @@ const Navbar = ({ userRole = 'student' }) => {
             <>
               <Link
                 to="/login"
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  scrolled || !isHomePage 
-                    ? 'text-gray-700 hover:text-primary-600 hover:bg-gray-50' 
-                    : 'text-white hover:bg-white/10'
-                }`}
+                className="block px-3 py-2 rounded-md border border-pink-500 text-pink-400 hover:bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-600 hover:text-white transition-all duration-300"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Iniciar Sesión
               </Link>
               <Link
                 to="/register"
-                className={`block px-3 py-2 rounded-md text-base font-medium ${
-                  scrolled || !isHomePage 
-                    ? 'text-gray-700 hover:text-primary-600 hover:bg-gray-50' 
-                    : 'text-white hover:bg-white/10'
-                }`}
+                className="block px-3 py-2 rounded-md bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-600 text-white hover:from-pink-500 hover:to-fuchsia-600 transition-all duration-300"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Registrarse
