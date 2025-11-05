@@ -1,35 +1,133 @@
 import db from '../config/db.js';
 
+const getInstructorId = (req) => {
+  const rawValue = req.user?.id ?? req.query.instructorId ?? 1;
+  const parsed = parseInt(rawValue, 10);
+  return Number.isNaN(parsed) ? 1 : parsed;
+};
+
+const USER_NAME_EXPR = "COALESCE(u.full_name, NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''))";
+
 export const instructorController = {
-  // Dashboard del instructor
   async getDashboard(req, res) {
     try {
-      // Obtener ID del instructor desde el token de autenticación o query parameter
-      const instructorId = req.user?.id || req.query.instructorId || 1;
-      
-      const stats = await db.query(`
-        SELECT 
-          COUNT(*) as total_courses,
-          COUNT(CASE WHEN status = 'published' THEN 1 END) as published_courses,
-          COUNT(CASE WHEN status = 'draft' THEN 1 END) as draft_courses,
-          COALESCE(SUM(price), 0) as total_revenue
-        FROM courses 
-        WHERE instructor_id = $1
-      `, [instructorId]);
-      
-      const recentCourses = await db.query(`
-        SELECT id, title, status, created_at, price
-        FROM courses 
-        WHERE instructor_id = $1
-        ORDER BY created_at DESC
-        LIMIT 5
-      `, [instructorId]);
-      
+      const instructorId = getInstructorId(req);
+
+      const [statsResult, recentCoursesResult, activityResult] = await Promise.all([
+        db.query(
+          `SELECT
+            COUNT(DISTINCT c.id) AS total_courses,
+            COUNT(DISTINCT CASE WHEN c.status = 'published' THEN c.id END) AS published_courses,
+            COUNT(DISTINCT CASE WHEN c.status = 'draft' THEN c.id END) AS draft_courses,
+            COUNT(DISTINCT ce.user_id) AS total_students,
+            COUNT(CASE WHEN ce.completed_at IS NULL THEN 1 END) AS active_enrollments,
+            COUNT(CASE WHEN ce.completed_at IS NOT NULL THEN 1 END) AS completed_enrollments,
+            COALESCE(AVG(cr.rating), 0) AS average_rating,
+            COUNT(DISTINCT CASE WHEN ce.enrolled_at >= NOW() - INTERVAL '30 days' THEN ce.user_id END) AS new_students
+          FROM courses c
+          LEFT JOIN course_enrollments ce ON ce.course_id = c.id
+          LEFT JOIN course_reviews cr ON cr.course_id = c.id
+          WHERE c.instructor_id = $1`,
+          [instructorId]
+        ),
+        db.query(
+          `SELECT
+            c.id,
+            c.title,
+            c.status,
+            c.created_at,
+            COALESCE(AVG(cr.rating), 0) AS rating,
+            COUNT(ce.id) AS enrollment_count
+          FROM courses c
+          LEFT JOIN course_enrollments ce ON ce.course_id = c.id
+          LEFT JOIN course_reviews cr ON cr.course_id = c.id
+          WHERE c.instructor_id = $1
+          GROUP BY c.id
+          ORDER BY c.created_at DESC
+          LIMIT 5`,
+          [instructorId]
+        ),
+        db.query(
+          `SELECT * FROM (
+            SELECT
+              ce.enrolled_at AS occurred_at,
+              'enrollment' AS type,
+              ${USER_NAME_EXPR} AS actor_name,
+              c.title AS course_title
+            FROM course_enrollments ce
+            JOIN courses c ON ce.course_id = c.id
+            LEFT JOIN users u ON ce.user_id = u.id
+            WHERE c.instructor_id = $1
+
+            UNION ALL
+
+            SELECT
+              ce.completed_at AS occurred_at,
+              'completion' AS type,
+              ${USER_NAME_EXPR} AS actor_name,
+              c.title AS course_title
+            FROM course_enrollments ce
+            JOIN courses c ON ce.course_id = c.id
+            LEFT JOIN users u ON ce.user_id = u.id
+            WHERE c.instructor_id = $1 AND ce.completed_at IS NOT NULL
+
+            UNION ALL
+
+            SELECT
+              cr.created_at AS occurred_at,
+              'review' AS type,
+              ${USER_NAME_EXPR} AS actor_name,
+              c.title AS course_title
+            FROM course_reviews cr
+            JOIN courses c ON cr.course_id = c.id
+            LEFT JOIN users u ON cr.user_id = u.id
+            WHERE c.instructor_id = $1
+          ) activity
+          WHERE occurred_at IS NOT NULL
+          ORDER BY occurred_at DESC
+          LIMIT 10`,
+          [instructorId]
+        )
+      ]);
+
+      const rawStats = statsResult.rows[0] || {};
+      const totalStudents = parseInt(rawStats.total_students, 10) || 0;
+      const completedEnrollments = parseInt(rawStats.completed_enrollments, 10) || 0;
+
+      const stats = {
+        totalCourses: parseInt(rawStats.total_courses, 10) || 0,
+        publishedCourses: parseInt(rawStats.published_courses, 10) || 0,
+        draftCourses: parseInt(rawStats.draft_courses, 10) || 0,
+        totalStudents,
+        activeEnrollments: parseInt(rawStats.active_enrollments, 10) || 0,
+        completedEnrollments,
+        averageRating: Number.parseFloat(rawStats.average_rating || 0).toFixed(1),
+        newStudents: parseInt(rawStats.new_students, 10) || 0,
+        completionRate: totalStudents > 0 ? Math.round((completedEnrollments / totalStudents) * 100) : 0
+      };
+
+      const recentCourses = recentCoursesResult.rows.map((course) => ({
+        id: course.id,
+        title: course.title,
+        status: course.status,
+        createdAt: course.created_at,
+        enrollmentCount: parseInt(course.enrollment_count, 10) || 0,
+        rating: Number.parseFloat(course.rating || 0).toFixed(1)
+      }));
+
+      const recentActivity = activityResult.rows.map((item) => ({
+        type: item.type,
+        actorName: item.actor_name,
+        courseTitle: item.course_title,
+        occurredAt: item.occurred_at
+      }));
+
       res.json({
         success: true,
         data: {
-          stats: stats.rows[0],
-          recentCourses: recentCourses.rows
+          stats,
+          recentCourses,
+          recentActivity
         }
       });
     } catch (error) {
@@ -41,47 +139,66 @@ export const instructorController = {
     }
   },
 
-  // Cursos del instructor
   async getInstructorCourses(req, res) {
     try {
-      const instructorId = req.user?.id || req.query.instructorId || 1;
+      const instructorId = getInstructorId(req);
       const { status, page = 1, limit = 10 } = req.query;
-      
-      let whereClause = 'WHERE instructor_id = $1';
+
+      let whereClause = 'WHERE c.instructor_id = $1';
       const params = [instructorId];
-      
+
       if (status && status !== 'all') {
-        whereClause += ' AND status = $2';
+        whereClause += ` AND c.status = $${params.length + 1}`;
         params.push(status);
       }
-      
+
       const offset = (page - 1) * limit;
-      
-      const result = await db.query(`
-        SELECT 
-          c.*,
-          cat.name as category_name,
-          (SELECT COUNT(*) FROM course_enrollments WHERE course_id = c.id) as enrollment_count
+
+      const coursesResult = await db.query(
+        `SELECT
+          c.id,
+          c.title,
+          c.status,
+          c.created_at,
+          c.updated_at,
+          c.thumbnail_url,
+          c.price,
+          c.level,
+          c.duration_hours,
+          cat.name AS category_name,
+          COUNT(ce.id) AS enrollment_count,
+          COALESCE(AVG(cr.rating), 0) AS rating
         FROM courses c
         LEFT JOIN course_categories cat ON c.category_id = cat.id
+        LEFT JOIN course_enrollments ce ON ce.course_id = c.id
+        LEFT JOIN course_reviews cr ON cr.course_id = c.id
         ${whereClause}
+        GROUP BY c.id, cat.name
         ORDER BY c.created_at DESC
-        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
-      `, [...params, limit, offset]);
-      
-      const countResult = await db.query(`
-        SELECT COUNT(*) FROM courses ${whereClause}
-      `, params);
-      
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset]
+      );
+
+      const countResult = await db.query(
+        `SELECT COUNT(*)
+         FROM courses c
+         ${whereClause}`,
+        params
+      );
+
       res.json({
         success: true,
         data: {
-          courses: result.rows,
+          courses: coursesResult.rows.map((course) => ({
+            ...course,
+            enrollment_count: parseInt(course.enrollment_count, 10) || 0,
+            rating: Number.parseFloat(course.rating || 0).toFixed(1)
+          })),
           pagination: {
-            page: parseInt(page),
-            limit: parseInt(limit),
-            total: parseInt(countResult.rows[0].count),
-            totalPages: Math.ceil(countResult.rows[0].count / limit)
+            page: Number.parseInt(page, 10),
+            limit: Number.parseInt(limit, 10),
+            total: Number.parseInt(countResult.rows[0].count, 10) || 0,
+            totalPages: Math.ceil((Number.parseInt(countResult.rows[0].count, 10) || 0) / limit)
           }
         }
       });
@@ -94,138 +211,141 @@ export const instructorController = {
     }
   },
 
-  // Analytics del instructor
   async getAnalytics(req, res) {
     try {
-      const instructorId = req.user?.id || req.query.instructorId || 1;
-      
-      // Estadísticas generales
-      const generalStats = await db.query(`
-        SELECT 
-          COUNT(DISTINCT ce.user_id) as total_students,
-          COALESCE(SUM(c.price), 0) as total_revenue,
-          COALESCE(AVG(cr.rating), 0) as average_rating,
-          COUNT(DISTINCT c.id) as total_courses,
-          COUNT(DISTINCT CASE WHEN c.status = 'published' THEN c.id END) as active_courses
-        FROM courses c
-        LEFT JOIN course_enrollments ce ON c.id = ce.course_id
-        LEFT JOIN course_reviews cr ON c.id = cr.course_id
-        WHERE c.instructor_id = $1
-      `, [instructorId]);
+      const instructorId = getInstructorId(req);
 
-      // Top cursos por estudiantes
-      const topCourses = await db.query(`
-        SELECT 
-          c.id,
-          c.title,
-          COUNT(DISTINCT ce.user_id) as students,
-          COALESCE(SUM(c.price), 0) as revenue,
-          COALESCE(AVG(cr.rating), 0) as rating,
-          cat.name as category,
-          ROUND(
-            (COUNT(CASE WHEN ce.status = 'completed' THEN 1 END) * 100.0) / 
-            NULLIF(COUNT(ce.id), 0), 2
-          ) as completion_rate
-        FROM courses c
-        LEFT JOIN course_enrollments ce ON c.id = ce.course_id
-        LEFT JOIN course_reviews cr ON c.id = cr.course_id
-        LEFT JOIN course_categories cat ON c.category_id = cat.id
-        WHERE c.instructor_id = $1
-        GROUP BY c.id, c.title, c.price, cat.name
-        ORDER BY students DESC
-        LIMIT 5
-      `, [instructorId]);
+      const [generalStats, topCourses, categoryStats, monthlyStats, weeklyProgress, recentActivity] = await Promise.all([
+        db.query(
+          `SELECT
+            COUNT(DISTINCT ce.user_id) AS total_students,
+            COUNT(DISTINCT c.id) AS total_courses,
+            COUNT(DISTINCT CASE WHEN c.status = 'published' THEN c.id END) AS active_courses,
+            COALESCE(AVG(cr.rating), 0) AS average_rating,
+            COUNT(ce.id) AS total_enrollments,
+            COUNT(CASE WHEN ce.completed_at IS NOT NULL THEN 1 END) AS completed_enrollments
+          FROM courses c
+          LEFT JOIN course_enrollments ce ON ce.course_id = c.id
+          LEFT JOIN course_reviews cr ON cr.course_id = c.id
+          WHERE c.instructor_id = $1`,
+          [instructorId]
+        ),
+        db.query(
+          `SELECT
+            c.id,
+            c.title,
+            COUNT(DISTINCT ce.user_id) AS students,
+            COUNT(CASE WHEN ce.completed_at IS NOT NULL THEN 1 END) AS completions,
+            COALESCE(AVG(cr.rating), 0) AS rating,
+            cat.name AS category
+          FROM courses c
+          LEFT JOIN course_enrollments ce ON ce.course_id = c.id
+          LEFT JOIN course_reviews cr ON cr.course_id = c.id
+          LEFT JOIN course_categories cat ON c.category_id = cat.id
+          WHERE c.instructor_id = $1
+          GROUP BY c.id, cat.name
+          ORDER BY students DESC
+          LIMIT 5`,
+          [instructorId]
+        ),
+        db.query(
+          `SELECT
+            cat.name AS category,
+            COUNT(DISTINCT ce.user_id) AS students,
+            COUNT(ce.id) AS enrollments
+          FROM courses c
+          LEFT JOIN course_enrollments ce ON ce.course_id = c.id
+          LEFT JOIN course_categories cat ON c.category_id = cat.id
+          WHERE c.instructor_id = $1
+          GROUP BY cat.name
+          ORDER BY students DESC`,
+          [instructorId]
+        ),
+        db.query(
+          `SELECT
+            TO_CHAR(DATE_TRUNC('month', ce.enrolled_at), 'Mon') AS month,
+            COUNT(DISTINCT ce.user_id) AS students,
+            COUNT(ce.id) AS enrollments,
+            COUNT(CASE WHEN ce.completed_at IS NOT NULL THEN 1 END) AS completions
+          FROM course_enrollments ce
+          JOIN courses c ON ce.course_id = c.id
+          WHERE c.instructor_id = $1
+            AND ce.enrolled_at >= DATE_TRUNC('month', NOW()) - INTERVAL '5 months'
+          GROUP BY DATE_TRUNC('month', ce.enrolled_at)
+          ORDER BY DATE_TRUNC('month', ce.enrolled_at)`,
+          [instructorId]
+        ),
+        db.query(
+          `SELECT
+            TO_CHAR(DATE_TRUNC('day', COALESCE(lp.completed_at, lp.updated_at, lp.created_at)), 'Dy') AS day,
+            COALESCE(SUM(lp.time_spent_minutes), 0) AS minutes,
+            COUNT(DISTINCT lp.user_id) AS students
+          FROM lesson_progress lp
+          JOIN course_lessons cl ON lp.lesson_id = cl.id
+          JOIN course_sections cs ON cl.section_id = cs.id
+          JOIN courses c ON cs.course_id = c.id
+          WHERE c.instructor_id = $1
+            AND COALESCE(lp.completed_at, lp.updated_at, lp.created_at) >= NOW() - INTERVAL '7 days'
+          GROUP BY DATE_TRUNC('day', COALESCE(lp.completed_at, lp.updated_at, lp.created_at))
+          ORDER BY DATE_TRUNC('day', COALESCE(lp.completed_at, lp.updated_at, lp.created_at))`,
+          [instructorId]
+        ),
+        db.query(
+          `SELECT
+            ce.enrolled_at AS occurred_at,
+            'enrollment' AS type,
+            ${USER_NAME_EXPR} AS actor_name,
+            c.title AS course_title
+          FROM course_enrollments ce
+          JOIN courses c ON ce.course_id = c.id
+          LEFT JOIN users u ON ce.user_id = u.id
+          WHERE c.instructor_id = $1
+          ORDER BY ce.enrolled_at DESC
+          LIMIT 10`,
+          [instructorId]
+        )
+      ]);
 
-      // Estadísticas por categoría
-      const categoryStats = await db.query(`
-        SELECT 
-          cat.name as category,
-          COUNT(DISTINCT ce.user_id) as students,
-          COALESCE(SUM(c.price), 0) as revenue
-        FROM courses c
-        LEFT JOIN course_enrollments ce ON c.id = ce.course_id
-        LEFT JOIN course_categories cat ON c.category_id = cat.id
-        WHERE c.instructor_id = $1
-        GROUP BY cat.name
-        ORDER BY students DESC
-      `, [instructorId]);
+      const general = generalStats.rows[0] || {};
+      const totalEnrollments = parseInt(general.total_enrollments, 10) || 0;
+      const completedEnrollments = parseInt(general.completed_enrollments, 10) || 0;
 
-      // Actividad reciente (simulada con datos existentes)
-      const recentActivity = await db.query(`
-        SELECT 
-          'enrollment' as type,
-          u.name as student,
-          c.title as course,
-          ce.enrolled_at as timestamp
-        FROM course_enrollments ce
-        JOIN courses c ON ce.course_id = c.id
-        JOIN users u ON ce.user_id = u.id
-        WHERE c.instructor_id = $1
-        ORDER BY ce.enrolled_at DESC
-        LIMIT 10
-      `, [instructorId]);
-
-      // Estadísticas mensuales reales de los últimos 6 meses
-      const monthlyStats = await db.query(`
-        SELECT 
-          TO_CHAR(DATE_TRUNC('month', ce.enrolled_at), 'Month') as month,
-          COUNT(DISTINCT ce.user_id) as students,
-          COALESCE(SUM(c.price), 0) as revenue,
-          COUNT(ce.id) as enrollments,
-          COUNT(CASE WHEN ce.status = 'completed' THEN 1 END) as completions
-        FROM course_enrollments ce
-        JOIN courses c ON ce.course_id = c.id
-        WHERE c.instructor_id = $1 
-          AND ce.enrolled_at >= NOW() - INTERVAL '6 months'
-        GROUP BY DATE_TRUNC('month', ce.enrolled_at)
-        ORDER BY DATE_TRUNC('month', ce.enrolled_at)
-      `, [instructorId]);
-
-      // Progreso semanal real de la última semana
-      const weeklyProgress = await db.query(`
-        SELECT 
-          TO_CHAR(DATE_TRUNC('day', ua.created_at), 'Dy') as day,
-          COALESCE(SUM(ua.time_spent), 0) / 60 as hours,
-          COUNT(DISTINCT ua.user_id) as students
-        FROM user_activities ua
-        JOIN course_enrollments ce ON ua.user_id = ce.user_id
-        JOIN courses c ON ce.course_id = c.id
-        WHERE c.instructor_id = $1 
-          AND ua.created_at >= NOW() - INTERVAL '7 days'
-        GROUP BY DATE_TRUNC('day', ua.created_at)
-        ORDER BY DATE_TRUNC('day', ua.created_at)
-      `, [instructorId]);
-
-      // Calcular tasa de completación real
-      const completionRateQuery = await db.query(`
-        SELECT 
-          ROUND(
-            (COUNT(CASE WHEN ce.status = 'completed' THEN 1 END) * 100.0) / 
-            NULLIF(COUNT(*), 0), 2
-          ) as completion_rate
-        FROM course_enrollments ce
-        JOIN courses c ON ce.course_id = c.id
-        WHERE c.instructor_id = $1
-      `, [instructorId]);
-
-      const analytics = {
-        ...generalStats.rows[0],
-        averageRating: parseFloat(generalStats.rows[0].average_rating || 0).toFixed(1),
-        completionRate: parseFloat(completionRateQuery.rows[0]?.completion_rate || 0),
-        monthlyStats: monthlyStats.rows,
-        topCourses: topCourses.rows.map(course => ({
-          ...course,
-          rating: parseFloat(course.rating || 0).toFixed(1),
-          completionRate: parseFloat(course.completion_rate || 0)
-        })),
-        recentActivity: recentActivity.rows,
-        categoryStats: categoryStats.rows,
-        weeklyProgress: weeklyProgress.rows
-      };
-      
       res.json({
         success: true,
-        data: analytics
+        data: {
+          totalStudents: parseInt(general.total_students, 10) || 0,
+          totalCourses: parseInt(general.total_courses, 10) || 0,
+          activeCourses: parseInt(general.active_courses, 10) || 0,
+          averageRating: Number.parseFloat(general.average_rating || 0).toFixed(1),
+          completionRate: totalEnrollments > 0 ? Math.round((completedEnrollments / totalEnrollments) * 100) : 0,
+          monthlyStats: monthlyStats.rows,
+          weeklyProgress: weeklyProgress.rows.map((entry) => {
+            const minutes = Number.parseFloat(entry.minutes ?? 0);
+            const safeMinutes = Number.isFinite(minutes) ? minutes : 0;
+            return {
+              day: entry.day,
+              hours: safeMinutes / 60,
+              students: parseInt(entry.students, 10) || 0
+            };
+          }),
+          topCourses: topCourses.rows.map((course) => ({
+            ...course,
+            students: parseInt(course.students, 10) || 0,
+            completions: parseInt(course.completions, 10) || 0,
+            rating: Number.parseFloat(course.rating || 0).toFixed(1)
+          })),
+          categoryStats: categoryStats.rows.map((item) => ({
+            ...item,
+            students: parseInt(item.students, 10) || 0,
+            enrollments: parseInt(item.enrollments, 10) || 0
+          })),
+          recentActivity: recentActivity.rows.map((item) => ({
+            type: item.type,
+            actorName: item.actor_name,
+            courseTitle: item.course_title,
+            occurredAt: item.occurred_at
+          }))
+        }
       });
     } catch (error) {
       console.error('Error fetching instructor analytics:', error);
@@ -236,146 +356,143 @@ export const instructorController = {
     }
   },
 
-  // Estudiantes del instructor
   async getStudents(req, res) {
     try {
-      const instructorId = req.user?.id || req.query.instructorId || 1;
+      const instructorId = getInstructorId(req);
       const { page = 1, limit = 10, search = '', status = 'all' } = req.query;
-      
-      let whereClause = `WHERE c.instructor_id = $1`;
-      let params = [instructorId];
-      let paramCount = 1;
 
-      // Filtro de búsqueda
+      const params = [instructorId];
+      let whereClause = 'WHERE c.instructor_id = $1';
+
       if (search) {
-        paramCount++;
-        whereClause += ` AND (u.name ILIKE $${paramCount} OR u.email ILIKE $${paramCount})`;
         params.push(`%${search}%`);
+        whereClause += ` AND (${USER_NAME_EXPR} ILIKE $${params.length} OR u.email ILIKE $${params.length})`;
       }
 
-      // Filtro de estado (simulado basado en actividad reciente)
-      let statusFilter = '';
-      if (status !== 'all') {
-        if (status === 'active') {
-          statusFilter = ` AND ce.enrolled_at >= NOW() - INTERVAL '30 days'`;
-        } else if (status === 'inactive') {
-          statusFilter = ` AND ce.enrolled_at < NOW() - INTERVAL '30 days'`;
-        }
+      if (status === 'active') {
+        whereClause += " AND (ce.completed_at IS NULL AND (ce.last_accessed_at IS NULL OR ce.last_accessed_at >= NOW() - INTERVAL '30 days'))";
+      } else if (status === 'inactive') {
+        whereClause += " AND (ce.completed_at IS NULL AND ce.last_accessed_at < NOW() - INTERVAL '30 days')";
+      } else if (status === 'completed') {
+        whereClause += ' AND ce.completed_at IS NOT NULL';
       }
 
       const offset = (page - 1) * limit;
 
-      // Consulta principal para obtener estudiantes
-      const studentsQuery = `
-        SELECT DISTINCT
+      const studentsResult = await db.query(
+        `SELECT
           u.id,
-          u.name,
+          ${USER_NAME_EXPR} AS full_name,
           u.email,
-          u.avatar,
-          u.created_at as join_date,
-          COUNT(DISTINCT ce.course_id) as enrolled_courses,
-          MAX(ce.enrolled_at) as last_activity,
-          CASE 
-            WHEN MAX(ce.enrolled_at) >= NOW() - INTERVAL '30 days' THEN 'active'
-            ELSE 'inactive'
-          END as status
-        FROM users u
-        JOIN course_enrollments ce ON u.id = ce.user_id
+          u.avatar_url,
+          MIN(ce.enrolled_at) AS first_enrolled_at,
+          MAX(ce.last_accessed_at) AS last_accessed_at,
+          COUNT(DISTINCT ce.course_id) AS enrolled_courses,
+          AVG(ce.progress_percentage) AS average_progress,
+          COUNT(CASE WHEN ce.completed_at IS NOT NULL THEN 1 END) AS completed_courses
+        FROM course_enrollments ce
         JOIN courses c ON ce.course_id = c.id
-        ${whereClause}${statusFilter}
-        GROUP BY u.id, u.name, u.email, u.avatar, u.created_at
-        ORDER BY last_activity DESC
-        LIMIT $${params.length + 1} OFFSET $${params.length + 2}
-      `;
+        LEFT JOIN users u ON ce.user_id = u.id
+        ${whereClause}
+        GROUP BY u.id, u.full_name, u.first_name, u.last_name, u.email, u.avatar_url
+        ORDER BY last_accessed_at DESC NULLS LAST
+        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+        [...params, limit, offset]
+      );
 
-      const students = await db.query(studentsQuery, [...params, limit, offset]);
+      const countResult = await db.query(
+        `SELECT COUNT(DISTINCT ce.user_id) AS total
+         FROM course_enrollments ce
+         JOIN courses c ON ce.course_id = c.id
+         LEFT JOIN users u ON ce.user_id = u.id
+         ${whereClause}`,
+        params
+      );
 
-      // Consulta para contar total de estudiantes
-      const countQuery = `
-        SELECT COUNT(DISTINCT u.id) as total
-        FROM users u
-        JOIN course_enrollments ce ON u.id = ce.user_id
-        JOIN courses c ON ce.course_id = c.id
-        ${whereClause}${statusFilter}
-      `;
-
-      const countResult = await db.query(countQuery, params);
-
-      // Obtener cursos actuales para cada estudiante
-      const studentsWithCourses = await Promise.all(
-        students.rows.map(async (student) => {
-          const coursesQuery = `
-            SELECT 
+      const students = await Promise.all(
+        studentsResult.rows.map(async (student) => {
+          const courses = await db.query(
+            `SELECT
               c.id,
               c.title,
-              COALESCE(lp.progress_percentage, 0) as progress
+              ce.progress_percentage,
+              ce.completed_at,
+              ce.enrolled_at
             FROM course_enrollments ce
             JOIN courses c ON ce.course_id = c.id
-            LEFT JOIN (
-              SELECT 
-                course_id, 
-                user_id, 
-                AVG(progress_percentage) as progress_percentage
-              FROM lesson_progress 
-              GROUP BY course_id, user_id
-            ) lp ON c.id = lp.course_id AND ce.user_id = lp.user_id
             WHERE ce.user_id = $1 AND c.instructor_id = $2
-            ORDER BY ce.enrolled_at DESC
-          `;
+            ORDER BY ce.enrolled_at DESC`,
+            [student.id, instructorId]
+          );
 
-          const courses = await db.query(coursesQuery, [student.id, instructorId]);
-          
-          // Obtener horas totales reales del estudiante
-          const hoursQuery = await db.query(`
-            SELECT COALESCE(SUM(ua.time_spent), 0) / 60 as total_hours
-            FROM user_activities ua
-            JOIN course_enrollments ce ON ua.user_id = ce.user_id
-            JOIN courses c ON ce.course_id = c.id
-            WHERE ua.user_id = $1 AND c.instructor_id = $2
-          `, [student.id, instructorId]);
-          
+          const timeResult = await db.query(
+            `SELECT COALESCE(SUM(lp.time_spent_minutes), 0) AS minutes
+             FROM lesson_progress lp
+             JOIN course_lessons cl ON lp.lesson_id = cl.id
+             JOIN course_sections cs ON cl.section_id = cs.id
+             JOIN courses c ON cs.course_id = c.id
+             WHERE lp.user_id = $1 AND c.instructor_id = $2`,
+            [student.id, instructorId]
+          );
+
+          const progress = Number.parseFloat(student.average_progress || 0);
+          const derivedStatus = student.completed_courses > 0
+            ? 'completed'
+            : (student.last_accessed_at && new Date(student.last_accessed_at) >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+              ? 'active'
+              : 'inactive');
+
           return {
-            ...student,
-            currentCourses: courses.rows,
-            completedCourses: courses.rows.filter(c => c.progress >= 100).length,
-            totalProgress: courses.rows.length > 0 
-              ? Math.round(courses.rows.reduce((sum, c) => sum + c.progress, 0) / courses.rows.length)
-              : 0,
-            totalHours: Math.round(parseFloat(hoursQuery.rows[0]?.total_hours || 0)),
-            certificates: courses.rows.filter(c => c.progress >= 100).length
+            id: student.id,
+            name: student.full_name,
+            email: student.email,
+            avatarUrl: student.avatar_url,
+            enrolledCourses: parseInt(student.enrolled_courses, 10) || 0,
+            completedCourses: parseInt(student.completed_courses, 10) || 0,
+            totalProgress: Math.round(progress) || 0,
+            lastActivity: student.last_accessed_at,
+            firstEnrollment: student.first_enrolled_at,
+            status: derivedStatus,
+            totalHours: Math.round((Number.parseFloat(timeResult.rows[0]?.minutes || 0)) / 60),
+            courses: courses.rows.map((course) => ({
+              id: course.id,
+              title: course.title,
+              progress: Math.round(Number.parseFloat(course.progress_percentage || 0)),
+              completed: Boolean(course.completed_at)
+            }))
           };
         })
       );
 
-      // Resumen de estadísticas
-      const summaryQuery = `
-        SELECT 
-          COUNT(DISTINCT u.id) as total_students,
-          COUNT(DISTINCT CASE WHEN ce.enrolled_at >= NOW() - INTERVAL '30 days' THEN u.id END) as active_students,
-          COUNT(DISTINCT CASE WHEN ce.enrolled_at < NOW() - INTERVAL '30 days' THEN u.id END) as inactive_students
-        FROM users u
-        JOIN course_enrollments ce ON u.id = ce.user_id
+      const summaryResult = await db.query(
+        `SELECT
+          COUNT(DISTINCT ce.user_id) AS total_students,
+          COUNT(DISTINCT CASE WHEN ce.completed_at IS NOT NULL THEN ce.user_id END) AS completed_students,
+          COUNT(DISTINCT CASE WHEN ce.completed_at IS NULL AND (ce.last_accessed_at IS NULL OR ce.last_accessed_at >= NOW() - INTERVAL '30 days') THEN ce.user_id END) AS active_students,
+          COUNT(DISTINCT CASE WHEN ce.completed_at IS NULL AND ce.last_accessed_at < NOW() - INTERVAL '30 days' THEN ce.user_id END) AS inactive_students
+        FROM course_enrollments ce
         JOIN courses c ON ce.course_id = c.id
-        WHERE c.instructor_id = $1
-      `;
+        WHERE c.instructor_id = $1`,
+        [instructorId]
+      );
 
-      const summary = await db.query(summaryQuery, [instructorId]);
+      const summary = summaryResult.rows[0] || {};
 
       res.json({
         success: true,
         data: {
-          students: studentsWithCourses,
+          students,
           pagination: {
-            total: parseInt(countResult.rows[0].total),
-            page: parseInt(page),
-            limit: parseInt(limit),
-            totalPages: Math.ceil(countResult.rows[0].total / limit)
+            total: Number.parseInt(countResult.rows[0].total, 10) || 0,
+            page: Number.parseInt(page, 10),
+            limit: Number.parseInt(limit, 10),
+            totalPages: Math.ceil((Number.parseInt(countResult.rows[0].total, 10) || 0) / limit)
           },
           summary: {
-            totalStudents: parseInt(summary.rows[0].total_students),
-            activeStudents: parseInt(summary.rows[0].active_students),
-            inactiveStudents: parseInt(summary.rows[0].inactive_students),
-            completedStudents: 0 // Se puede calcular con datos reales más adelante
+            totalStudents: Number.parseInt(summary.total_students, 10) || 0,
+            activeStudents: Number.parseInt(summary.active_students, 10) || 0,
+            inactiveStudents: Number.parseInt(summary.inactive_students, 10) || 0,
+            completedStudents: Number.parseInt(summary.completed_students, 10) || 0
           }
         }
       });

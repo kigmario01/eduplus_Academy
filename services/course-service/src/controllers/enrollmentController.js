@@ -3,16 +3,13 @@ import db from '../config/db.js';
 
 // Esquemas de validación
 const enrollmentSchema = Joi.object({
-  course_id: Joi.number().integer().required(),
-  payment_method: Joi.string().valid('free', 'credit_card', 'paypal', 'bank_transfer').default('free'),
-  payment_amount: Joi.number().min(0).default(0)
+  course_id: Joi.number().integer().required()
 });
 
 const progressSchema = Joi.object({
   lesson_id: Joi.number().integer().required(),
   completed: Joi.boolean().default(false),
-  time_spent_minutes: Joi.number().integer().min(0).default(0),
-  notes: Joi.string().max(1000).optional()
+  time_spent_minutes: Joi.number().integer().min(0).default(0)
 });
 
 export const enrollmentController = {
@@ -29,7 +26,7 @@ export const enrollmentController = {
         });
       }
 
-      const { course_id, payment_method, payment_amount } = value;
+      const { course_id } = value;
       const user_id = req.user?.id || 1; // TODO: Obtener del token de autenticación
 
       // Verificar que el curso existe y está activo
@@ -60,29 +57,18 @@ export const enrollmentController = {
         });
       }
 
-      // Verificar el precio del curso
-      if (course.price > 0 && payment_amount < course.price) {
-        return res.status(400).json({
-          success: false,
-          message: 'El monto del pago es insuficiente'
-        });
-      }
-
       // Crear la inscripción
       const insertQuery = `
         INSERT INTO course_enrollments (
-          user_id, course_id, enrollment_date, payment_method, 
-          payment_amount, status, progress_percentage
+          user_id, course_id, enrolled_at, progress_percentage, last_accessed_at
         )
-        VALUES ($1, $2, NOW(), $3, $4, 'active', 0)
+        VALUES ($1, $2, NOW(), 0, NOW())
         RETURNING *
       `;
 
       const result = await db.query(insertQuery, [
         user_id,
-        course_id,
-        payment_method,
-        payment_amount
+        course_id
       ]);
 
       // Actualizar el contador de estudiantes del curso
@@ -114,16 +100,25 @@ export const enrollmentController = {
       let whereClause = 'WHERE ce.user_id = $1';
       const queryParams = [user_id];
 
-      if (status) {
-        whereClause += ' AND ce.status = $2';
-        queryParams.push(status);
+      if (status === 'completed') {
+        whereClause += ' AND ce.completed_at IS NOT NULL';
+      } else if (status === 'active') {
+        whereClause += ' AND ce.completed_at IS NULL';
       }
 
       const offset = (page - 1) * limit;
 
       const query = `
         SELECT 
-          ce.*,
+          ce.id,
+          ce.enrolled_at,
+          ce.completed_at,
+          ce.progress_percentage,
+          ce.last_accessed_at,
+          CASE
+            WHEN ce.completed_at IS NOT NULL OR ce.progress_percentage >= 100 THEN 'completed'
+            ELSE 'active'
+          END AS status,
           c.title,
           c.description,
           c.thumbnail_url,
@@ -133,7 +128,7 @@ export const enrollmentController = {
           cc.name as category_name,
           u.first_name as instructor_first_name,
           u.last_name as instructor_last_name,
-          u.profile_image as instructor_image
+          u.avatar_url as instructor_image
         FROM course_enrollments ce
         JOIN courses c ON ce.course_id = c.id
         JOIN course_categories cc ON c.category_id = cc.id
@@ -208,9 +203,8 @@ export const enrollmentController = {
           cl.content_type,
           cl.is_mandatory,
           lp.completed,
-          lp.completion_date,
-          lp.time_spent_minutes,
-          lp.notes
+          lp.completed_at,
+          lp.time_spent_minutes
         FROM course_sections cs
         LEFT JOIN course_lessons cl ON cs.id = cl.section_id
         LEFT JOIN lesson_progress lp ON cl.id = lp.lesson_id AND lp.user_id = $1
@@ -247,9 +241,8 @@ export const enrollmentController = {
             content_type: row.content_type,
             is_mandatory: row.is_mandatory,
             completed: row.completed || false,
-            completion_date: row.completion_date,
-            time_spent_minutes: row.time_spent_minutes || 0,
-            notes: row.notes
+            completed_at: row.completed_at,
+            time_spent_minutes: row.time_spent_minutes || 0
           });
         }
       });
@@ -291,7 +284,7 @@ export const enrollmentController = {
       }
 
       const user_id = req.user?.id || 1;
-      const { completed, time_spent_minutes, notes } = value;
+      const { completed, time_spent_minutes } = value;
 
       // Verificar que la lección existe y obtener el course_id
       const lessonCheck = await db.query(
@@ -323,18 +316,17 @@ export const enrollmentController = {
 
       // Insertar o actualizar el progreso de la lección
       const upsertQuery = `
-        INSERT INTO lesson_progress (user_id, lesson_id, completed, completion_date, time_spent_minutes, notes)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        INSERT INTO lesson_progress (user_id, lesson_id, completed, completed_at, time_spent_minutes)
+        VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (user_id, lesson_id)
         DO UPDATE SET
           completed = EXCLUDED.completed,
-          completion_date = CASE 
-            WHEN EXCLUDED.completed = true AND lesson_progress.completed = false 
-            THEN NOW() 
-            ELSE lesson_progress.completion_date 
+          completed_at = CASE
+            WHEN EXCLUDED.completed = true AND lesson_progress.completed = false
+            THEN NOW()
+            ELSE lesson_progress.completed_at
           END,
           time_spent_minutes = EXCLUDED.time_spent_minutes,
-          notes = EXCLUDED.notes,
           updated_at = NOW()
         RETURNING *
       `;
@@ -345,8 +337,7 @@ export const enrollmentController = {
         lessonId,
         completed,
         completionDate,
-        time_spent_minutes,
-        notes
+        time_spent_minutes
       ]);
 
       // Actualizar el porcentaje de progreso del curso
@@ -371,7 +362,7 @@ export const enrollmentController = {
     try {
       // Calcular el porcentaje de progreso
       const progressQuery = `
-        SELECT 
+        SELECT
           COUNT(*) as total_lessons,
           COUNT(CASE WHEN lp.completed = true THEN 1 END) as completed_lessons
         FROM course_lessons cl
@@ -386,21 +377,13 @@ export const enrollmentController = {
 
       // Actualizar el progreso en la tabla de inscripciones
       await db.query(
-        `UPDATE course_enrollments 
-         SET progress_percentage = $1, updated_at = NOW()
+        `UPDATE course_enrollments
+         SET progress_percentage = $1,
+             last_accessed_at = NOW(),
+             completed_at = CASE WHEN $1 >= 100 THEN COALESCE(completed_at, NOW()) ELSE NULL END
          WHERE user_id = $2 AND course_id = $3`,
         [progressPercentage, userId, courseId]
       );
-
-      // Si el curso está completado (100%), marcar como completado
-      if (progressPercentage === 100) {
-        await db.query(
-          `UPDATE course_enrollments 
-           SET status = 'completed', completion_date = NOW()
-           WHERE user_id = $1 AND course_id = $2 AND status = 'active'`,
-          [userId, courseId]
-        );
-      }
     } catch (error) {
       console.error('Error updating course progress:', error);
     }
@@ -412,14 +395,13 @@ export const enrollmentController = {
       const instructor_id = req.user?.id || req.params.instructorId || 1;
 
       const statsQuery = `
-        SELECT 
+        SELECT
           c.id,
           c.title,
           COUNT(ce.id) as total_enrollments,
-          COUNT(CASE WHEN ce.status = 'active' THEN 1 END) as active_enrollments,
-          COUNT(CASE WHEN ce.status = 'completed' THEN 1 END) as completed_enrollments,
-          AVG(ce.progress_percentage) as avg_progress,
-          SUM(ce.payment_amount) as total_revenue
+          COUNT(CASE WHEN ce.completed_at IS NULL THEN 1 END) as active_enrollments,
+          COUNT(CASE WHEN ce.completed_at IS NOT NULL THEN 1 END) as completed_enrollments,
+          AVG(ce.progress_percentage) as avg_progress
         FROM courses c
         LEFT JOIN course_enrollments ce ON c.id = ce.course_id
         WHERE c.instructor_id = $1
@@ -434,7 +416,7 @@ export const enrollmentController = {
         data: result.rows.map(row => ({
           ...row,
           avg_progress: parseFloat(row.avg_progress) || 0,
-          total_revenue: parseFloat(row.total_revenue) || 0
+          total_enrollments: parseInt(row.total_enrollments) || 0
         }))
       });
     } catch (error) {
