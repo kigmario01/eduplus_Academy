@@ -20,17 +20,15 @@ const Profile = ({ user }) => {
   }, [user]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Perfil</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">
-          Visualiza y actualiza la información básica de tu cuenta.
-        </p>
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 text-white">
+      <div className="space-y-2">
+        <h2 className="text-2xl font-semibold">Perfil</h2>
+        <p className="text-sm text-white/60">Visualiza y actualiza la información básica de tu cuenta.</p>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
-        <div className="flex items-center space-x-4">
-          <div className="h-20 w-20 rounded-full bg-blue-500 flex items-center justify-center text-white text-2xl font-semibold overflow-hidden">
+      <div className="space-y-6 rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl">
+        <div className="flex flex-col items-start gap-4 md:flex-row md:items-center">
+          <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-white/20 bg-white/10 text-3xl font-semibold">
             {profile?.profileImage ? (
               <img src={profile.profileImage} alt={profile?.name} className="h-full w-full object-cover" />
             ) : (
@@ -38,48 +36,48 @@ const Profile = ({ user }) => {
             )}
           </div>
           <div>
-            <h3 className="text-xl font-semibold text-gray-800 dark:text-white">{profile?.name || 'Usuario sin nombre'}</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{profile?.email || 'correo@ejemplo.com'}</p>
-            <span className="inline-flex items-center px-2 py-1 mt-2 text-xs font-medium rounded-full bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">
+            <h3 className="text-xl font-semibold text-white">{profile?.name || 'Usuario sin nombre'}</h3>
+            <p className="text-sm text-white/60">{profile?.email || 'correo@ejemplo.com'}</p>
+            <span className="mt-3 inline-flex items-center rounded-full border border-white/20 px-3 py-1 text-xs font-medium text-white/70">
               {profile?.role || 'Estudiante'}
             </span>
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Biografía</p>
-            <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Biografía</p>
+            <p className="mt-3 text-sm text-white/70">
               {profile?.bio || 'Comparte una breve descripción sobre ti para que tus instructores te conozcan mejor.'}
             </p>
           </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Intereses</p>
-            <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/50">Intereses</p>
+            <p className="mt-3 text-sm text-white/70">
               {profile?.interests?.join(', ') || 'Añade tus áreas de interés para recibir recomendaciones personalizadas.'}
             </p>
           </div>
         </div>
 
-        <div className="mt-6 border-t border-gray-100 dark:border-gray-700 pt-6">
-          <h4 className="text-sm font-semibold text-gray-800 dark:text-white mb-3">Seguridad</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-900/30">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Contraseña</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Última actualización hace 90 días</p>
+        <div className="rounded-2xl border border-white/10 bg-white/5 p-6">
+          <h4 className="text-sm font-semibold uppercase tracking-[0.3em] text-white/60">Seguridad</h4>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0b0522]/80 p-5">
+              <p className="text-sm font-medium text-white">Contraseña</p>
+              <p className="text-xs text-white/50">Última actualización hace 90 días</p>
               <motion.button
-                whileTap={{ scale: 0.95 }}
-                className="mt-3 inline-flex items-center px-3 py-2 text-sm font-medium rounded-md bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300"
+                whileTap={{ scale: 0.97 }}
+                className="rounded-xl border border-white/20 px-4 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
               >
                 Cambiar contraseña
               </motion.button>
             </div>
-            <div className="p-4 rounded-lg bg-gray-50 dark:bg-gray-900/30">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Verificación en dos pasos</p>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Protege tu cuenta con un segundo factor</p>
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0b0522]/80 p-5">
+              <p className="text-sm font-medium text-white">Verificación en dos pasos</p>
+              <p className="text-xs text-white/50">Protege tu cuenta con un segundo factor</p>
               <motion.button
-                whileTap={{ scale: 0.95 }}
-                className="mt-3 inline-flex items-center px-3 py-2 text-sm font-medium rounded-md border border-blue-200 text-blue-600 dark:border-blue-700 dark:text-blue-300"
+                whileTap={{ scale: 0.97 }}
+                className="rounded-xl border border-emerald-400/60 px-4 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/20 hover:text-white"
               >
                 Configurar 2FA
               </motion.button>
