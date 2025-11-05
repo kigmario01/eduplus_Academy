@@ -6,7 +6,8 @@ const getInstructorId = (req) => {
   return Number.isNaN(parsed) ? 1 : parsed;
 };
 
-const USER_NAME_EXPR = "COALESCE(u.full_name, NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''))";
+// Derivar nombre del usuario desde columnas reales: name y lastname
+const USER_NAME_EXPR = "NULLIF(TRIM(CONCAT_WS(' ', u.name, u.lastname)), '')";
 
 export const instructorController = {
   async getDashboard(req, res) {
@@ -277,7 +278,7 @@ export const instructorController = {
         ),
         db.query(
           `SELECT
-            TO_CHAR(DATE_TRUNC('day', COALESCE(lp.completed_at, lp.updated_at, lp.created_at)), 'Dy') AS day,
+            TO_CHAR(DATE_TRUNC('day', COALESCE(lp.completed_at, lp.updated_at)), 'Dy') AS day,
             COALESCE(SUM(lp.time_spent_minutes), 0) AS minutes,
             COUNT(DISTINCT lp.user_id) AS students
           FROM lesson_progress lp
@@ -285,9 +286,9 @@ export const instructorController = {
           JOIN course_sections cs ON cl.section_id = cs.id
           JOIN courses c ON cs.course_id = c.id
           WHERE c.instructor_id = $1
-            AND COALESCE(lp.completed_at, lp.updated_at, lp.created_at) >= NOW() - INTERVAL '7 days'
-          GROUP BY DATE_TRUNC('day', COALESCE(lp.completed_at, lp.updated_at, lp.created_at))
-          ORDER BY DATE_TRUNC('day', COALESCE(lp.completed_at, lp.updated_at, lp.created_at))`,
+            AND COALESCE(lp.completed_at, lp.updated_at) >= NOW() - INTERVAL '7 days'
+          GROUP BY DATE_TRUNC('day', COALESCE(lp.completed_at, lp.updated_at))
+          ORDER BY DATE_TRUNC('day', COALESCE(lp.completed_at, lp.updated_at))`,
           [instructorId]
         ),
         db.query(
@@ -394,7 +395,7 @@ export const instructorController = {
         JOIN courses c ON ce.course_id = c.id
         LEFT JOIN users u ON ce.user_id = u.id
         ${whereClause}
-        GROUP BY u.id, u.full_name, u.first_name, u.last_name, u.email, u.avatar_url
+        GROUP BY u.id, u.name, u.lastname, u.email, u.avatar_url
         ORDER BY last_accessed_at DESC NULLS LAST
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, limit, offset]

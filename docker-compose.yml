@@ -19,7 +19,7 @@ services:
     env_file:
       - ./services/course-service/.env
     ports:
-      - "5003:5002"
+      - "5003:3001"
 
   frontend:
     build:

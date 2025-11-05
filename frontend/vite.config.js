@@ -15,26 +15,26 @@ export default defineConfig({
   port: 3000,
   proxy: {
     '/api/auth': {
-      target: 'http://eduplus-auth:4000',
+      target: 'http://localhost:4000',
       changeOrigin: true
     },
     '/api/courses': {
-      target: 'http://eduplus-course:5002',
+      target: 'http://localhost:5003',
       changeOrigin: true
     },
     '/api/categories': {
-      target: 'http://eduplus-course:5002',
+      target: 'http://localhost:5003',
       changeOrigin: true
     },
     '/api/instructor': {
-      target: 'http://eduplus-course:5002',
+      target: 'http://localhost:5003',
       changeOrigin: true
     },
     '/api/admin': {
-      target: 'http://eduplus-course:5002',
+      target: 'http://localhost:5003',
       changeOrigin: true
     }
   }
 }
 }
-)  
+)
