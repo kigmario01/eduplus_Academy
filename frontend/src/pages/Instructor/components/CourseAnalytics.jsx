@@ -1,473 +1,254 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { 
-  BarChart3, 
-  Users, 
-  DollarSign, 
-  TrendingUp,
-  Eye,
-  Clock,
-  Star,
-  BookOpen
-} from 'lucide-react';
+import { courseApi } from '@/lib/api';
+import { TrendingUp, Users, BarChart3, Star, PieChart, Activity } from 'lucide-react';
+
+const SummaryCard = ({ title, value, description, icon: Icon, gradient }) => (
+  <div className={`relative overflow-hidden rounded-3xl bg-gradient-to-br ${gradient} p-[1px] shadow-xl`}>
+    <div className="bg-[#0f0824]/95 rounded-3xl px-6 py-5 h-full">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-xs uppercase tracking-[0.3em] text-white/50">{title}</p>
+          <p className="text-3xl font-bold text-white mt-3">{value}</p>
+          <p className="text-sm text-white/70 mt-2">{description}</p>
+        </div>
+        <div className="p-3 rounded-2xl bg-white/10 text-white">
+          <Icon className="w-6 h-6" />
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 const CourseAnalytics = () => {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedPeriod, setSelectedPeriod] = useState('30d');
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchAnalytics();
-  }, [selectedPeriod]);
+    const fetchAnalytics = async () => {
+      try {
+        setLoading(true);
+        setError('');
 
-  const fetchAnalytics = async () => {
-    try {
-      setLoading(true);
-      
-      // Llamada real a la API del backend
-      const response = await fetch('http://localhost:5000/api/instructor/analytics', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        const response = await courseApi.get('/instructor/analytics');
+        const data = response.data?.data;
+        if (!data) {
+          throw new Error('No se pudo obtener la información de analíticas');
         }
-      });
 
-      if (!response.ok) {
-        throw new Error(`Error ${response.status}: ${response.statusText}`);
+        setAnalytics(data);
+      } catch (err) {
+        console.error('Error fetching analytics:', err);
+        setError(err.message || 'No se pudieron cargar las analíticas.');
+        setAnalytics(null);
+      } finally {
+        setLoading(false);
       }
+    };
 
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        // Transformar los datos del backend al formato esperado por el componente
-        const transformedData = {
-          overview: [
-            {
-              title: 'Ingresos Totales',
-              value: `$${result.data.totalRevenue?.toLocaleString() || '0'}`,
-              change: 15.3, // Este valor podría venir del backend en el futuro
-              icon: DollarSign,
-              bgColor: 'bg-green-100',
-              iconColor: 'text-green-600'
-            },
-            {
-              title: 'Estudiantes Activos',
-              value: result.data.totalStudents?.toLocaleString() || '0',
-              change: 8.2,
-              icon: Users,
-              bgColor: 'bg-blue-100',
-              iconColor: 'text-blue-600'
-            },
-            {
-              title: 'Calificación Promedio',
-              value: result.data.averageRating?.toFixed(1) || '0.0',
-              change: 2.1,
-              icon: Star,
-              bgColor: 'bg-yellow-100',
-              iconColor: 'text-yellow-600'
-            },
-            {
-              title: 'Tasa de Finalización',
-              value: `${result.data.completionRate || 0}%`,
-              change: 12.5,
-              icon: TrendingUp,
-              bgColor: 'bg-purple-100',
-              iconColor: 'text-purple-600'
-            }
-          ],
-          revenueChart: result.data.monthlyStats || [],
-          topCourses: result.data.topCourses || [],
-          engagement: [
-            { metric: 'Tasa de Finalización', value: result.data.completionRate || 0 },
-            { metric: 'Tiempo en Plataforma', value: 65 },
-            { metric: 'Interacción con Contenido', value: 82 },
-            { metric: 'Participación en Foros', value: 45 }
-          ],
-          recentActivity: [
-            {
-              description: 'Datos actualizados desde el servidor',
-              time: 'ahora',
-              icon: TrendingUp,
-              bgColor: 'bg-blue-100',
-              iconColor: 'text-blue-600'
-            }
-          ],
-          timeMetrics: [
-            {
-              value: '24.5h',
-              label: 'Tiempo promedio por curso',
-              icon: Clock,
-              bgColor: 'bg-blue-100',
-              iconColor: 'text-blue-600'
-            },
-            {
-              value: `${result.data.completionRate || 0}%`,
-              label: 'Tasa de retención',
-              icon: TrendingUp,
-              bgColor: 'bg-green-100',
-              iconColor: 'text-green-600'
-            }
-          ]
-        };
-        
-        setAnalytics(transformedData);
-      } else {
-        throw new Error('Formato de respuesta inválido');
-      }
-    } catch (error) {
-      console.error('Error fetching analytics:', error);
-      
-      // En caso de error, mostrar datos por defecto
-      setAnalytics({
-        overview: [
-          {
-            title: 'Ingresos Totales',
-            value: '$0',
-            change: 0,
-            icon: DollarSign,
-            bgColor: 'bg-green-100',
-            iconColor: 'text-green-600'
-          },
-          {
-            title: 'Estudiantes Activos',
-            value: '0',
-            change: 0,
-            icon: Users,
-            bgColor: 'bg-blue-100',
-            iconColor: 'text-blue-600'
-          },
-          {
-            title: 'Calificación Promedio',
-            value: '0.0',
-            change: 0,
-            icon: Star,
-            bgColor: 'bg-yellow-100',
-            iconColor: 'text-yellow-600'
-          },
-          {
-            title: 'Tasa de Finalización',
-            value: '0%',
-            change: 0,
-            icon: TrendingUp,
-            bgColor: 'bg-purple-100',
-            iconColor: 'text-purple-600'
-          }
-        ],
-        revenueChart: [],
-        topCourses: [],
-        engagement: [],
-        recentActivity: [
-          {
-            description: 'Error al cargar datos del servidor',
-            time: 'ahora',
-            icon: Users,
-            bgColor: 'bg-red-100',
-            iconColor: 'text-red-600'
-          }
-        ],
-        timeMetrics: []
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    fetchAnalytics();
+  }, []);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center h-64">
+        <div className="h-14 w-14 rounded-full border-4 border-white/20 border-t-pink-400 animate-spin" />
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className="rounded-3xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+        {error}
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return null;
+  }
+
+  const monthlyStats = analytics.monthlyStats ?? [];
+  const weeklyProgress = analytics.weeklyProgress ?? [];
+  const topCourses = analytics.topCourses ?? [];
+  const recentActivity = analytics.recentActivity ?? [];
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">Analíticas de Cursos</h1>
-          <div className="flex items-center justify-between">
-            <p className="text-gray-600">
-              Monitorea el rendimiento de tus cursos y el engagement de los estudiantes
-            </p>
-            <div className="flex space-x-2">
-              {[
-                { value: '7d', label: '7 días' },
-                { value: '30d', label: '30 días' },
-                { value: '90d', label: '90 días' },
-                { value: '1y', label: '1 año' }
-              ].map((period) => (
-                <button
-                  key={period.value}
-                  onClick={() => setSelectedPeriod(period.value)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    selectedPeriod === period.value
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {period.label}
-                </button>
-              ))}
-            </div>
+    <div className="space-y-8 text-white">
+      <div className="relative overflow-hidden rounded-3xl bg-[#150b2e]/80 border border-white/10 shadow-2xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-sky-500/30 via-indigo-500/20 to-fuchsia-600/20 blur-3xl" />
+        <div className="relative px-8 py-10">
+          <h1 className="text-3xl font-bold text-white">Analíticas en tiempo real</h1>
+          <p className="text-white/70 mt-3 max-w-2xl">
+            Visualiza cómo interactúan tus estudiantes con los cursos, identifica oportunidades de mejora y celebra los logros que estás generando en tu comunidad educativa.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
+        <SummaryCard
+          title="Estudiantes"
+          value={analytics.totalStudents}
+          description="Personas aprendiendo contigo"
+          icon={Users}
+          gradient="from-emerald-400 via-green-500 to-teal-500"
+        />
+        <SummaryCard
+          title="Cursos"
+          value={analytics.totalCourses}
+          description="Total de cursos creados"
+          icon={BarChart3}
+          gradient="from-sky-400 via-cyan-500 to-indigo-500"
+        />
+        <SummaryCard
+          title="Cursos activos"
+          value={analytics.activeCourses}
+          description="Actualmente publicados"
+          icon={Activity}
+          gradient="from-violet-400 via-purple-500 to-fuchsia-500"
+        />
+        <SummaryCard
+          title="Calificación"
+          value={analytics.averageRating}
+          description="Promedio general"
+          icon={Star}
+          gradient="from-amber-400 via-orange-500 to-rose-500"
+        />
+        <SummaryCard
+          title="Finalización"
+          value={`${analytics.completionRate}%`}
+          description="Tasa de finalización"
+          icon={TrendingUp}
+          gradient="from-pink-400 via-rose-500 to-red-500"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-[#0f0824]/80 border border-white/10 rounded-3xl p-6 shadow-xl"
+        >
+          <h2 className="text-xl font-semibold text-white mb-4">Rendimiento mensual</h2>
+          <div className="space-y-4">
+            {monthlyStats.length > 0 ? (
+              monthlyStats.map((month) => (
+                <div key={month.month} className="flex items-center justify-between rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
+                  <div>
+                    <p className="text-lg font-semibold text-white">{month.month.trim()}</p>
+                    <p className="text-xs text-white/60">Estudiantes únicos: {month.students}</p>
+                  </div>
+                  <div className="text-right text-sm text-white/70">
+                    <p>Inscripciones: <span className="text-white font-semibold">{month.enrollments}</span></p>
+                    <p>Completados: <span className="text-emerald-200 font-semibold">{month.completions}</span></p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-white/60">Aún no hay datos mensuales suficientes.</p>
+            )}
           </div>
-        </div>
+        </motion.div>
 
-        {/* Métricas principales */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {analytics.overview.map((metric, index) => (
-            <motion.div
-              key={metric.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-white rounded-lg shadow-sm p-6"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{metric.title}</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-2">{metric.value}</p>
-                  <div className="flex items-center mt-2">
-                    <TrendingUp className={`h-4 w-4 mr-1 ${
-                      metric.change > 0 ? 'text-green-500' : 'text-red-500'
-                    }`} />
-                    <span className={`text-sm ${
-                      metric.change > 0 ? 'text-green-600' : 'text-red-600'
-                    }`}>
-                      {metric.change > 0 ? '+' : ''}{metric.change}%
-                    </span>
-                    <span className="text-sm text-gray-500 ml-1">vs período anterior</span>
-                  </div>
-                </div>
-                <div className={`p-3 rounded-full ${metric.bgColor}`}>
-                  <metric.icon className={`h-6 w-6 ${metric.iconColor}`} />
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* Gráfico de ingresos */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Ingresos por Mes</h3>
-            <div className="h-64 flex items-end justify-between space-x-2">
-              {analytics.revenueChart.map((item, index) => (
-                <div key={index} className="flex flex-col items-center flex-1">
-                  <div
-                    className="bg-blue-500 rounded-t w-full transition-all duration-300 hover:bg-blue-600"
-                    style={{ height: `${(item.value / Math.max(...analytics.revenueChart.map(i => i.value))) * 200}px` }}
-                  ></div>
-                  <span className="text-xs text-gray-600 mt-2">{item.month}</span>
-                  <span className="text-xs font-medium text-gray-900">${item.value}</span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Cursos más populares */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Cursos Más Populares</h3>
-            <div className="space-y-4">
-              {analytics.topCourses.map((course, index) => (
-                <div key={course.id} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                      <BookOpen className="h-5 w-5 text-gray-600" />
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-[#0f0824]/80 border border-white/10 rounded-3xl p-6 shadow-xl"
+        >
+          <h2 className="text-xl font-semibold text-white mb-4">Progreso semanal</h2>
+          <div className="space-y-3">
+            {weeklyProgress.length > 0 ? (
+              weeklyProgress.map((day, index) => {
+                const parsed = Number.parseFloat(day.hours ?? 0);
+                const hours = Number.isFinite(parsed) ? parsed : 0;
+                return (
+                  <div key={`${day.day}-${index}`} className="flex items-center gap-4">
+                    <div className="w-16 text-sm text-white/60 uppercase tracking-[0.2em]">{day.day}</div>
+                    <div className="flex-1 h-2 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-600"
+                        style={{ width: `${Math.min(100, Math.round((hours || 0) / 6 * 100))}%` }}
+                      />
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900">{course.title}</p>
-                      <p className="text-sm text-gray-600">{course.students} estudiantes</p>
+                    <div className="text-sm text-white/70 min-w-[90px] text-right">
+                      {hours.toFixed(1)} h · {day.students} estudiantes
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium text-gray-900">${course.revenue}</p>
-                    <div className="flex items-center">
-                      <Star className="h-4 w-4 text-yellow-400 mr-1" />
-                      <span className="text-sm text-gray-600">{course.rating}</span>
-                    </div>
+                );
+              })
+            ) : (
+              <p className="text-sm text-white/60">No hay actividad registrada esta semana.</p>
+            )}
+          </div>
+        </motion.div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-[#0f0824]/80 border border-white/10 rounded-3xl p-6 shadow-xl"
+        >
+          <h2 className="text-xl font-semibold text-white mb-4">Cursos destacados</h2>
+          <div className="space-y-4">
+            {topCourses.length > 0 ? (
+              topCourses.map((course) => (
+                <div key={course.id} className="rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
+                  <p className="text-lg font-semibold text-white">{course.title}</p>
+                  <div className="mt-2 flex flex-wrap gap-4 text-sm text-white/70">
+                    <span>Estudiantes: <strong className="text-white">{course.students}</strong></span>
+                    <span>Completados: <strong className="text-emerald-200">{course.completions}</strong></span>
+                    <span>Rating: <strong className="text-amber-200">{course.rating}</strong></span>
+                    {course.category && <span className="text-xs uppercase tracking-[0.2em] text-white/50">{course.category}</span>}
                   </div>
                 </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
+              ))
+            ) : (
+              <p className="text-sm text-white/60">Aún no hay cursos con actividad suficiente.</p>
+            )}
+          </div>
+        </motion.div>
 
-        {/* Estadísticas detalladas */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Engagement de estudiantes */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-lg shadow-sm p-6"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Engagement de Estudiantes</h3>
-            <div className="space-y-4">
-              {analytics.engagement.map((item, index) => (
-                <div key={index}>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium text-gray-700">{item.metric}</span>
-                    <span className="text-sm text-gray-900">{item.value}%</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${item.value}%` }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Actividad reciente */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white rounded-lg shadow-sm p-6"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Actividad Reciente</h3>
-            <div className="space-y-4">
-              {analytics.recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-start space-x-3">
-                  <div className={`p-2 rounded-full ${activity.bgColor}`}>
-                    <activity.icon className={`h-4 w-4 ${activity.iconColor}`} />
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-[#0f0824]/80 border border-white/10 rounded-3xl p-6 shadow-xl"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-white">Actividad reciente</h2>
+            <PieChart className="w-5 h-5 text-white/70" />
+          </div>
+          <div className="space-y-4">
+            {recentActivity.length > 0 ? (
+              recentActivity.slice(0, 8).map((event, index) => (
+                <div key={`${event.type}-${index}`} className="flex items-center gap-3 rounded-2xl bg-white/5 border border-white/10 px-4 py-3">
+                  <div className="text-2xl">
+                    {event.type === 'enrollment' ? '🆕' : event.type === 'completion' ? '✅' : '⭐'}
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-gray-900">{activity.description}</p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
+                    <p className="text-sm text-white/80 font-medium">{event.actorName || 'Estudiante'}</p>
+                    <p className="text-xs text-white/50">
+                      {event.type === 'enrollment' && 'se inscribió en'}
+                      {event.type === 'completion' && 'completó'}
+                      {event.type === 'review' && 'dejó reseña en'}
+                      {` "${event.courseTitle}"`}
+                    </p>
+                  </div>
+                  <div className="text-xs text-white/60">
+                    {event.occurredAt ? new Date(event.occurredAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '—'}
                   </div>
                 </div>
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Métricas de tiempo */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-lg shadow-sm p-6"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Métricas de Tiempo</h3>
-            <div className="space-y-6">
-              {analytics.timeMetrics.map((metric, index) => (
-                <div key={index} className="text-center">
-                  <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full ${metric.bgColor} mb-2`}>
-                    <metric.icon className={`h-8 w-8 ${metric.iconColor}`} />
-                  </div>
-                  <p className="text-2xl font-bold text-gray-900">{metric.value}</p>
-                  <p className="text-sm text-gray-600">{metric.label}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        </div>
+              ))
+            ) : (
+              <p className="text-sm text-white/60">No hay actividad reciente registrada.</p>
+            )}
+          </div>
+        </motion.div>
       </div>
     </div>
   );
-};
-
-// Estado inicial para datos de analytics
-const initialAnalyticsData = {
-  overview: [
-    {
-      title: 'Ingresos Totales',
-      value: '$0',
-      change: 0,
-      icon: DollarSign,
-      bgColor: 'bg-green-100',
-      iconColor: 'text-green-600'
-    },
-    {
-      title: 'Estudiantes Activos',
-      value: '0',
-      change: 0,
-      icon: Users,
-      bgColor: 'bg-blue-100',
-      iconColor: 'text-blue-600'
-    },
-    {
-      title: 'Visualizaciones',
-      value: '0',
-      change: 0,
-      icon: Eye,
-      bgColor: 'bg-purple-100',
-      iconColor: 'text-purple-600'
-    },
-    {
-      title: 'Tiempo Promedio',
-      value: '0h',
-      change: 0,
-      icon: Clock,
-      bgColor: 'bg-orange-100',
-      iconColor: 'text-orange-600'
-    }
-  ],
-  revenueChart: [],
-  topCourses: [],
-  engagement: [
-    { metric: 'Tasa de Finalización', value: 0 },
-    { metric: 'Tiempo en Plataforma', value: 0 },
-    { metric: 'Interacción con Contenido', value: 0 },
-    { metric: 'Participación en Foros', value: 0 }
-  ],
-  recentActivity: [
-    {
-      description: 'Nuevo estudiante se inscribió en React Avanzado',
-      time: 'hace 5 minutos',
-      icon: Users,
-      bgColor: 'bg-green-100',
-      iconColor: 'text-green-600'
-    },
-    {
-      description: 'Curso de JavaScript alcanzó 300 estudiantes',
-      time: 'hace 1 hora',
-      icon: TrendingUp,
-      bgColor: 'bg-blue-100',
-      iconColor: 'text-blue-600'
-    },
-    {
-      description: 'Nueva reseña 5 estrellas en TypeScript',
-      time: 'hace 2 horas',
-      icon: Star,
-      bgColor: 'bg-yellow-100',
-      iconColor: 'text-yellow-600'
-    },
-    {
-      description: 'Actualización de contenido completada',
-      time: 'hace 3 horas',
-      icon: BookOpen,
-      bgColor: 'bg-purple-100',
-      iconColor: 'text-purple-600'
-    }
-  ],
-  timeMetrics: [
-    {
-      value: '24.5h',
-      label: 'Tiempo promedio por curso',
-      icon: Clock,
-      bgColor: 'bg-blue-100',
-      iconColor: 'text-blue-600'
-    },
-    {
-      value: '89%',
-      label: 'Tasa de retención',
-      icon: TrendingUp,
-      bgColor: 'bg-green-100',
-      iconColor: 'text-green-600'
-    }
-  ]
 };
 
 export default CourseAnalytics;

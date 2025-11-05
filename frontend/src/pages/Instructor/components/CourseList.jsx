@@ -1,221 +1,174 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import api from '@/lib/api';
+import { courseApi } from '@/lib/api';
+
+const statusLabels = {
+  published: { label: 'Publicado', classes: 'bg-emerald-500/20 text-emerald-200 border border-emerald-400/30' },
+  draft: { label: 'Borrador', classes: 'bg-amber-500/20 text-amber-100 border border-amber-300/30' },
+  archived: { label: 'Archivado', classes: 'bg-white/10 text-white/70 border border-white/20' }
+};
 
 const CourseList = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [error, setError] = useState(null);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchCourses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
   const fetchCourses = async () => {
     try {
       setLoading(true);
-      setError(null);
-      
-      // Llamada real a la API
+      setError('');
+
       const params = filter !== 'all' ? { status: filter } : {};
-      const response = await api.get('/instructor/courses', { params });
-      
-      const coursesData = Array.isArray(response?.data?.items) 
-        ? response.data.items 
-        : response?.data || [];
-      
-      setCourses(coursesData);
-    } catch (error) {
-      console.error('Error fetching courses:', error);
-      setError('No se pudieron cargar los cursos. Verifica tu conexión.');
+      const response = await courseApi.get('/instructor/courses', { params });
+
+      const payload = response.data?.data;
+      if (!payload) {
+        throw new Error('No se pudo obtener la información de cursos');
+      }
+
+      const normalized = Array.isArray(payload.courses)
+        ? payload.courses.map((course) => ({
+            id: course.id,
+            title: course.title,
+            status: course.status,
+            enrollmentCount: parseInt(course.enrollment_count, 10) || 0,
+            rating: course.rating,
+            durationHours: course.duration_hours,
+            category: course.category_name
+          }))
+        : [];
+
+      setCourses(normalized);
+    } catch (err) {
+      console.error('Error fetching courses:', err);
+      setError(err.message || 'No se pudieron cargar los cursos.');
       setCourses([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      published: { color: 'bg-green-100 text-green-800', text: 'Publicado' },
-      draft: { color: 'bg-yellow-100 text-yellow-800', text: 'Borrador' },
-      archived: { color: 'bg-gray-100 text-gray-800', text: 'Archivado' }
-    };
-    
-    const config = statusConfig[status] || statusConfig.draft;
-    
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        {config.text}
-      </span>
-    );
-  };
+  const filters = useMemo(() => ([
+    { key: 'all', label: 'Todos' },
+    { key: 'published', label: 'Publicados' },
+    { key: 'draft', label: 'Borradores' },
+    { key: 'archived', label: 'Archivados' }
+  ]), []);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+        <div className="h-14 w-14 rounded-full border-4 border-white/20 border-t-pink-400 animate-spin" />
       </div>
     );
   }
 
   return (
-    <div>
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
+    <div className="space-y-6 text-white">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Mis Cursos</h2>
-          <p className="text-gray-600">Gestiona y edita tus cursos</p>
+          <h2 className="text-2xl font-bold">Mis cursos</h2>
+          <p className="text-sm text-white/70">Gestiona y mejora la experiencia educativa de tu comunidad</p>
         </div>
         <Link
           to="/instructor/create"
-          className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-600 px-4 py-2 text-sm font-semibold shadow-lg shadow-pink-500/30 transition-transform hover:scale-[1.01]"
         >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Crear Nuevo Curso
+          <span className="text-lg">＋</span>
+          Nuevo curso
         </Link>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6">
-        <div className="flex space-x-4">
-          {[
-            { key: 'all', label: 'Todos' },
-            { key: 'published', label: 'Publicados' },
-            { key: 'draft', label: 'Borradores' },
-            { key: 'archived', label: 'Archivados' }
-          ].map((filterOption) => (
-            <button
-              key={filterOption.key}
-              onClick={() => setFilter(filterOption.key)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === filterOption.key
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-              }`}
-            >
-              {filterOption.label}
-            </button>
-          ))}
-        </div>
+      <div className="flex flex-wrap gap-2">
+        {filters.map((option) => (
+          <button
+            key={option.key}
+            onClick={() => setFilter(option.key)}
+            className={`px-4 py-2 rounded-xl border text-sm transition-all ${
+              filter === option.key
+                ? 'bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-600 text-white border-white/30 shadow-lg shadow-pink-500/40'
+                : 'bg-white/5 text-white/70 border-white/10 hover:text-white hover:border-pink-300'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
 
-      {/* Error State */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-          <div className="flex">
-            <svg className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800">Error al cargar cursos</h3>
-              <p className="text-sm text-red-700 mt-1">{error}</p>
-              <button 
-                onClick={fetchCourses}
-                className="mt-2 text-sm text-red-800 underline hover:text-red-900"
-              >
-                Intentar de nuevo
-              </button>
-            </div>
-          </div>
+        <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+          {error}
         </div>
       )}
 
-      {/* Course Grid */}
       {!error && courses.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map((course) => (
-            <motion.div
-              key={course.id}
-              whileHover={{ y: -4 }}
-              className="bg-white rounded-lg shadow-md overflow-hidden"
-            >
-              {/* Thumbnail */}
-              <div className="h-48 bg-gray-200 relative">
-                {course.thumbnail_url ? (
-                  <img 
-                    src={course.thumbnail_url} 
-                    alt={course.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    <svg className="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                )}
-                <div className="absolute top-3 right-3">
-                  {getStatusBadge(course.status)}
-                </div>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {courses.map((course) => {
+            const statusConfig = statusLabels[course.status] || statusLabels.draft;
 
-              {/* Content */}
-              <div className="p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">{course.title}</h3>
-                
-                {/* Stats */}
-                <div className="grid grid-cols-3 gap-4 mb-4 text-sm">
-                  <div className="text-center">
-                    <div className="font-semibold text-gray-900">{course.students || 0}</div>
-                    <div className="text-gray-500">Estudiantes</div>
+            return (
+              <motion.div
+                key={course.id}
+                whileHover={{ y: -6 }}
+                className="relative overflow-hidden rounded-3xl bg-[#0f0824]/80 border border-white/10 shadow-xl"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-white/5 pointer-events-none" />
+                <div className="relative p-6 space-y-5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm uppercase tracking-[0.2em] text-white/50">{course.category || 'Sin categoría'}</span>
+                    <span className={`text-xs font-semibold px-3 py-1 rounded-full ${statusConfig.classes}`}>
+                      {statusConfig.label}
+                    </span>
                   </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-gray-900">{course.rating || '—'}</div>
-                    <div className="text-gray-500">Rating</div>
+                  <h3 className="text-xl font-semibold text-white leading-snug">{course.title}</h3>
+                  <div className="grid grid-cols-3 gap-4 text-sm text-white/70">
+                    <div>
+                      <p className="text-2xl font-bold text-white">{course.enrollmentCount}</p>
+                      <p className="text-xs uppercase tracking-wide">Estudiantes</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{course.rating ?? '—'}</p>
+                      <p className="text-xs uppercase tracking-wide">Rating</p>
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-white">{course.durationHours || 0}h</p>
+                      <p className="text-xs uppercase tracking-wide">Duración</p>
+                    </div>
                   </div>
-                  <div className="text-center">
-                    <div className="font-semibold text-gray-900">${course.revenue || 0}</div>
-                    <div className="text-gray-500">Ingresos</div>
+                  <div className="flex gap-2">
+                    <Link
+                      to={`/instructor/edit/${course.id}`}
+                      className="flex-1 rounded-xl bg-white/10 border border-white/20 text-sm py-2 text-center text-white/80 hover:text-white hover:border-pink-300 hover:bg-white/20 transition-colors"
+                    >
+                      Editar
+                    </Link>
+                    <Link
+                      to={`/courses/${course.id}`}
+                      className="flex-1 rounded-xl bg-gradient-to-r from-sky-400 via-indigo-500 to-purple-500 text-sm py-2 text-center font-medium shadow-lg shadow-indigo-500/30"
+                    >
+                      Ver
+                    </Link>
                   </div>
                 </div>
-
-                {/* Actions */}
-                <div className="flex space-x-2">
-                  <Link
-                    to={`/instructor/edit/${course.id}`}
-                    className="flex-1 bg-blue-50 text-blue-700 text-center py-2 px-3 rounded-md text-sm font-medium hover:bg-blue-100 transition-colors"
-                  >
-                    Editar
-                  </Link>
-                  <button className="flex-1 bg-gray-50 text-gray-700 py-2 px-3 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors">
-                    Ver
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      ) : !error && !loading ? (
-        <div className="text-center py-12">
-          <div className="mx-auto h-24 w-24 text-gray-300 mb-4">
-            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" className="w-full h-full">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-            </svg>
-          </div>
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">Cursos Próximamente</h3>
-          <p className="text-gray-500 mb-6 max-w-md mx-auto">
-            Aún no tienes cursos creados. Utiliza el editor de cursos para crear contenido educativo increíble.
-          </p>
-          <div className="space-y-3">
-            <Link
-              to="/instructor/create"
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Crear Tu Primer Curso
-            </Link>
-            <p className="text-sm text-gray-400">
-              ¡Comparte tu conocimiento con el mundo!
-            </p>
-          </div>
+              </motion.div>
+            );
+          })}
         </div>
       ) : null}
+
+      {!error && courses.length === 0 && (
+        <div className="rounded-3xl border border-dashed border-white/20 bg-white/5 px-6 py-12 text-center text-white/60">
+          <p className="text-lg">Aún no tienes cursos en esta categoría.</p>
+          <p className="text-sm mt-2">Crea un nuevo curso para comenzar a compartir tu conocimiento.</p>
+        </div>
+      )}
     </div>
   );
 };
