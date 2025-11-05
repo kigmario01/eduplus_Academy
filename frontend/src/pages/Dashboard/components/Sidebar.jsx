@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
@@ -40,9 +40,14 @@ const menuItems = [
   { path: '/dashboard/settings', name: 'Configuración', icon: <SettingsIcon /> },
 ];
 
-const Sidebar = () => {
+const Sidebar = ({ user, onLogout }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const location = useLocation();
+
+  const displayName = useMemo(() => {
+    if (!user) return 'Estudiante';
+    return user.full_name || user.name || `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() || user.email || 'Estudiante';
+  }, [user]);
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
@@ -55,26 +60,28 @@ const Sidebar = () => {
 
   return (
     <motion.div
-      className="bg-gradient-to-b from-white via-neutral-50 to-secondary-50 dark:from-neutral-900 dark:via-neutral-800 dark:to-primary-900 h-screen shadow-xl border-r border-neutral-200 dark:border-neutral-700"
+      className="relative h-screen bg-[#0f0824]/95 text-white shadow-[0_20px_45px_-25px_rgba(124,58,237,0.45)] border-r border-white/10 backdrop-blur-xl"
       initial="expanded"
       animate={isCollapsed ? 'collapsed' : 'expanded'}
       variants={variants}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
     >
-      <div className="p-4 flex justify-between items-center border-b border-neutral-200 dark:border-neutral-700">
+      <div className="pointer-events-none absolute inset-0 opacity-80 bg-[radial-gradient(circle_at_top,_rgba(244,114,182,0.18),_transparent_55%)]" />
+
+      <div className="relative p-5 flex justify-between items-center border-b border-white/10">
         {!isCollapsed && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.1 }}
-            className="text-xl font-bold bg-gradient-to-r from-primary-600 to-secondary-600 bg-clip-text text-transparent"
+            className="text-xl font-bold text-white"
           >
             EduPlus
           </motion.div>
         )}
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded-xl hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-all duration-300 hover:shadow-md"
+          className="p-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 transition-all duration-300"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -99,21 +106,28 @@ const Sidebar = () => {
         </button>
       </div>
 
-      <nav className="mt-6">
+      {!isCollapsed && (
+        <div className="relative mx-4 mt-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-xs uppercase tracking-[0.3em] text-white/60">Mi espacio</p>
+          <p className="text-sm font-semibold text-white mt-2 line-clamp-2">{displayName}</p>
+        </div>
+      )}
+
+      <nav className="relative mt-8">
         <ul>
           {menuItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
             return (
               <li key={item.path} className="px-4 py-2">
                 <Link
                   to={item.path}
-                  className={`flex items-center p-3 rounded-xl transition-all duration-300 group relative ${
+                  className={`relative flex items-center gap-3 rounded-2xl px-4 py-3 transition-all duration-300 backdrop-blur-sm ${
                     isActive
-                      ? 'bg-gradient-to-r from-primary-100 to-secondary-100 text-primary-700 dark:from-primary-900/30 dark:to-secondary-900/30 dark:text-primary-300 shadow-md'
-                      : 'text-neutral-600 hover:bg-gradient-to-r hover:from-primary-50 hover:to-secondary-50 dark:text-neutral-300 dark:hover:from-primary-900/10 dark:hover:to-secondary-900/10 hover:text-primary-600 dark:hover:text-primary-400'
+                      ? 'bg-white/15 text-white shadow-[0_15px_30px_-20px_rgba(124,58,237,0.8)]'
+                      : 'text-white/70 hover:text-white hover:bg-white/10'
                   }`}
                 >
-                  <div className={`mr-3 transition-all duration-300 ${isActive ? 'text-primary-600 dark:text-primary-400' : 'group-hover:text-primary-600 dark:group-hover:text-primary-400'}`}>{item.icon}</div>
+                  <div className={`transition-all duration-300 ${isActive ? 'text-white' : 'text-white/60 group-hover:text-white'}`}>{item.icon}</div>
                   {!isCollapsed && (
                     <motion.span
                       initial={{ opacity: 0 }}
@@ -124,13 +138,7 @@ const Sidebar = () => {
                       {item.name}
                     </motion.span>
                   )}
-                  {isActive && (
-                    <motion.div
-                      className="absolute left-0 w-1 h-8 bg-gradient-to-b from-primary-600 to-secondary-600 rounded-r-md"
-                      layoutId="activeIndicator"
-                      transition={{ duration: 0.3 }}
-                    />
-                  )}
+                  {isActive && <span className="absolute inset-0 rounded-2xl border border-white/20" />}
                 </Link>
               </li>
             );
@@ -140,15 +148,10 @@ const Sidebar = () => {
 
       <div className="absolute bottom-4 w-full px-4">
         <button
-          className="flex items-center w-full p-3 rounded-xl text-error-600 hover:bg-error-50 dark:text-error-400 dark:hover:bg-error-900/20 transition-all duration-300 hover:shadow-md group"
-          onClick={() => {
-            // Implementar lógica de logout
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = '/login';
-          }}
+          className="group relative flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-rose-300 transition-all duration-300 hover:bg-rose-500/10 hover:text-white"
+          onClick={onLogout}
         >
-          <div className="mr-3 group-hover:scale-110 transition-transform duration-300">
+          <div className="transition-transform duration-300 group-hover:scale-110">
             <LogoutIcon />
           </div>
           {!isCollapsed && (
