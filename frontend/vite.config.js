@@ -19,19 +19,19 @@ export default defineConfig({
       changeOrigin: true
     },
     '/api/courses': {
-      target: 'http://localhost:5003',
+      target: 'http://localhost:5000',
       changeOrigin: true
     },
     '/api/categories': {
-      target: 'http://localhost:5003',
+      target: 'http://localhost:5000',
       changeOrigin: true
     },
     '/api/instructor': {
-      target: 'http://localhost:5003',
+      target: 'http://localhost:5000',
       changeOrigin: true
     },
-    '/api/admin': {
-      target: 'http://localhost:5003',
+    '/api/evaluations': {
+      target: 'http://localhost:5005',
       changeOrigin: true
     }
   }
