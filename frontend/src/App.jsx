@@ -8,11 +8,13 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard/Dashboard';
 import InstructorDashboard from './pages/Instructor/InstructorDashboard';
-import AdminDashboard from './components/Admin/AdminDashboard';
+// Admin panel removido
 import CourseCatalog from './pages/Courses/CourseCatalog';
 import CourseDetail from './pages/Courses/CourseDetail';
 import ProtectedRoute from './components/ProtectedRoute';
 import { authService } from './services/api';
+import EvaluationPage from './pages/Evaluation/Evaluation';
+import MyCertificates from './pages/Certificates/MyCertificates';
 
 // Componente para manejar las transiciones de página
 const AnimatedRoutes = () => {
@@ -21,8 +23,7 @@ const AnimatedRoutes = () => {
   
   // Determinar si estamos en una ruta de dashboard, instructor o admin
   const isDashboardRoute = location.pathname.startsWith('/dashboard') || 
-                           location.pathname.startsWith('/instructor') || 
-                           location.pathname.startsWith('/admin');
+                           location.pathname.startsWith('/instructor');
   
   // Obtener el rol del usuario
   useEffect(() => {
@@ -74,22 +75,7 @@ const AnimatedRoutes = () => {
               </ProtectedRoute>
             } 
           />
-          <Route 
-            path="/admin" 
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <AdminDashboard />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/admin/*" 
-            element={
-              <ProtectedRoute requiredRole="admin">
-                <AdminDashboard />
-              </ProtectedRoute>
-            } 
-          />
+          {/* Rutas de admin eliminadas */}
         </Routes>
       ) : (
         // Rutas públicas (con Navbar y Footer)
@@ -102,6 +88,22 @@ const AnimatedRoutes = () => {
               <Route path="/register" element={<Register />} />
               <Route path="/courses" element={<CourseCatalog />} />
               <Route path="/courses/:slug" element={<CourseDetail />} />
+              <Route 
+                path="/evaluation/:courseId" 
+                element={
+                  <ProtectedRoute requiredRole="student">
+                    <EvaluationPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/certificates" 
+                element={
+                  <ProtectedRoute requiredRole="student">
+                    <MyCertificates />
+                  </ProtectedRoute>
+                }
+              />
             </Routes>
           </main>
           <Footer />
@@ -114,6 +116,7 @@ const AnimatedRoutes = () => {
 function App() {
   return (
     <Router>
+      {/* Trigger oculto removido */}
       <AnimatedRoutes />
     </Router>
   );

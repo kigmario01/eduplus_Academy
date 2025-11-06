@@ -80,21 +80,21 @@ const Navbar = ({ userRole = 'student' }) => {
                   Dashboard
                 </Link>
 
+                {userRole === 'student' && (
+                  <Link
+                    to="/certificates"
+                    className="px-3 py-2 rounded-md text-sm font-medium text-neutral-200 hover:text-white transition-colors"
+                  >
+                    Mis certificados
+                  </Link>
+                )}
+
                 {(userRole === 'instructor' || userRole === 'admin') && (
                   <Link
                     to="/instructor"
                     className="px-3 py-2 rounded-md text-sm font-medium text-fuchsia-400 hover:text-pink-400 transition-colors"
                   >
                     Panel Instructor
-                  </Link>
-                )}
-
-                {userRole === 'admin' && (
-                  <Link
-                    to="/admin"
-                    className="px-3 py-2 rounded-md text-sm font-medium text-red-400 hover:text-red-300 transition-colors"
-                  >
-                    Panel Admin
                   </Link>
                 )}
 
@@ -166,14 +166,14 @@ const Navbar = ({ userRole = 'student' }) => {
               <Link to="/dashboard" className="block px-3 py-2 rounded-md hover:text-pink-400" onClick={() => setIsMenuOpen(false)}>
                 Dashboard
               </Link>
+              {userRole === 'student' && (
+                <Link to="/certificates" className="block px-3 py-2 rounded-md hover:text-white" onClick={() => setIsMenuOpen(false)}>
+                  Mis certificados
+                </Link>
+              )}
               {(userRole === 'instructor' || userRole === 'admin') && (
                 <Link to="/instructor" className="block px-3 py-2 rounded-md text-fuchsia-400 hover:text-pink-400" onClick={() => setIsMenuOpen(false)}>
                   Panel Instructor
-                </Link>
-              )}
-              {userRole === 'admin' && (
-                <Link to="/admin" className="block px-3 py-2 rounded-md text-red-400 hover:text-red-300" onClick={() => setIsMenuOpen(false)}>
-                  Panel Admin
                 </Link>
               )}
               <button
