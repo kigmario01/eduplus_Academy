@@ -58,7 +58,7 @@ export const getAllUsers = async (req, res) => {
         role, 
         is_active, 
         email_verified, 
-        profile_image_url,
+        avatar_url,
         bio,
         created_at, 
         updated_at
@@ -116,9 +116,22 @@ export const getAllUsers = async (req, res) => {
 export const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = parseInt(id, 10);
+    if (Number.isNaN(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de usuario inválido'
+      });
+    }
 
-    const user = await User.findById(id);
-    if (!user) {
+    // Incluir usuarios inactivos para administración
+    const result = await pool.query(
+      `SELECT id, name, lastname, email, role, is_active, email_verified, bio, avatar_url, created_at, updated_at
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Usuario no encontrado'
@@ -127,7 +140,7 @@ export const getUserById = async (req, res) => {
 
     res.json({
       success: true,
-      data: user
+      data: result.rows[0]
     });
 
   } catch (error) {
@@ -211,16 +224,24 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = parseInt(id, 10);
+    if (Number.isNaN(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de usuario inválido'
+      });
+    }
     const updates = req.body;
 
     // Verificar que el usuario existe
-    const existingUser = await User.findById(id);
-    if (!existingUser) {
+    const existingCheck = await pool.query('SELECT id, email FROM users WHERE id = $1', [id]);
+    if (existingCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Usuario no encontrado'
       });
     }
+    const existingUser = existingCheck.rows[0];
 
     // Prevenir que un admin se desactive a sí mismo
     if (req.user.id === parseInt(id) && updates.isActive === false) {
@@ -232,8 +253,8 @@ export const updateUser = async (req, res) => {
 
     // Si se está actualizando el email, verificar que no exista
     if (updates.email && updates.email !== existingUser.email) {
-      const emailExists = await User.existsByEmail(updates.email);
-      if (emailExists) {
+      const emailDup = await pool.query('SELECT 1 FROM users WHERE email = $1', [updates.email]);
+      if (emailDup.rows.length > 0) {
         return res.status(409).json({
           success: false,
           message: 'El email ya está registrado'
@@ -242,15 +263,45 @@ export const updateUser = async (req, res) => {
     }
 
     // Si se está actualizando la contraseña, hashearla
+    let passwordHash = null;
     if (updates.password) {
-      updates.password = await bcrypt.hash(updates.password, 10);
+      passwordHash = await bcrypt.hash(updates.password, 10);
     }
 
-    // Actualizar usuario
-    const updatedUser = await User.update(id, updates);
+    // Construir SQL dinámico con campos permitidos
+    const allowedFields = ['name', 'lastname', 'email', 'role', 'is_active', 'email_verified', 'bio', 'avatar_url'];
+    const setClauses = [];
+    const values = [];
+    let idx = 1;
 
-    // Remover password de la respuesta
-    const { password: _, ...userResponse } = updatedUser;
+    for (const field of allowedFields) {
+      if (Object.prototype.hasOwnProperty.call(updates, field)) {
+        setClauses.push(`${field} = $${idx}`);
+        values.push(updates[field]);
+        idx++;
+      }
+    }
+
+    if (passwordHash) {
+      setClauses.push(`password = $${idx}`);
+      values.push(passwordHash);
+      idx++;
+    }
+
+    if (setClauses.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No hay campos válidos para actualizar'
+      });
+    }
+
+    // Always update updated_at
+    setClauses.push(`updated_at = NOW()`);
+    values.push(userId);
+
+    const updateSql = `UPDATE users SET ${setClauses.join(', ')} WHERE id = $${idx} RETURNING id, name, lastname, email, role, is_active, email_verified, bio, avatar_url, created_at, updated_at`;
+    const updateResult = await pool.query(updateSql, values);
+    const userResponse = updateResult.rows[0];
 
     res.json({
       success: true,
@@ -272,11 +323,18 @@ export const updateUser = async (req, res) => {
 export const deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
+    const userId = parseInt(id, 10);
+    if (Number.isNaN(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de usuario inválido'
+      });
+    }
     const { permanent = false } = req.query;
 
     // Verificar que el usuario existe
-    const existingUser = await User.findById(id);
-    if (!existingUser) {
+    const existingCheck = await pool.query('SELECT id FROM users WHERE id = $1', [userId]);
+    if (existingCheck.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Usuario no encontrado'
@@ -284,28 +342,27 @@ export const deleteUser = async (req, res) => {
     }
 
     // Prevenir que un admin se elimine a sí mismo
-    if (req.user.id === parseInt(id)) {
+    if (req.user.id === userId) {
       return res.status(400).json({
         success: false,
         message: 'No puedes eliminar tu propia cuenta'
       });
     }
 
-    if (permanent === 'true') {
-      // Eliminación permanente (solo para casos extremos)
-      await User.delete(id);
-      res.json({
+    if (String(permanent) === 'true') {
+      // Eliminación permanente
+      await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+      return res.json({
         success: true,
         message: 'Usuario eliminado permanentemente'
       });
-    } else {
-      // Soft delete - solo desactivar
-      await User.update(id, { isActive: false });
-      res.json({
-        success: true,
-        message: 'Usuario desactivado exitosamente'
-      });
     }
+    // Soft delete - desactivar
+    await pool.query('UPDATE users SET is_active = false, updated_at = NOW() WHERE id = $1', [userId]);
+    return res.json({
+      success: true,
+      message: 'Usuario desactivado exitosamente'
+    });
 
   } catch (error) {
     console.error('Error eliminando usuario:', error);
@@ -321,9 +378,18 @@ export const deleteUser = async (req, res) => {
 export const reactivateUser = async (req, res) => {
   try {
     const { id } = req.params;
-
-    const updatedUser = await User.update(id, { isActive: true });
-    if (!updatedUser) {
+    const userId = parseInt(id, 10);
+    if (Number.isNaN(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID de usuario inválido'
+      });
+    }
+    const result = await pool.query(
+      'UPDATE users SET is_active = true, updated_at = NOW() WHERE id = $1 RETURNING id, name, lastname, email, role, is_active, email_verified, bio, avatar_url, created_at, updated_at',
+      [userId]
+    );
+    if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Usuario no encontrado'
@@ -333,7 +399,7 @@ export const reactivateUser = async (req, res) => {
     res.json({
       success: true,
       message: 'Usuario reactivado exitosamente',
-      data: updatedUser
+      data: result.rows[0]
     });
 
   } catch (error) {

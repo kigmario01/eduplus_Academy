@@ -29,14 +29,16 @@ process.on('uncaughtException', (err) => {
   console.error('🚨 Uncaught Exception:', err.message);
 });
 
-// Ping periódico para mantener conexión activa
-setInterval(async () => {
-  try {
-    await pool.query('SELECT 1');
-    console.log('🔄 Manteniendo conexión activa...');
-  } catch (e) {
-    console.error('⚠️ Ping DB falló:', e.message);
-  }
-}, 4 * 60 * 1000); // cada 4 minutos
+// Ping periódico para mantener conexión activa (desactivado en tests)
+if (process.env.NODE_ENV !== 'test') {
+  setInterval(async () => {
+    try {
+      await pool.query('SELECT 1');
+      console.log('🔄 Manteniendo conexión activa...');
+    } catch (e) {
+      console.error('⚠️ Ping DB falló:', e.message);
+    }
+  }, 4 * 60 * 1000); // cada 4 minutos
+}
 
 export default pool;

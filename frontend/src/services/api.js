@@ -55,6 +55,22 @@ export const authService = {
     }
   },
 
+  // Login con Google (ID token)
+  googleLogin: async (credential) => {
+    try {
+      console.log('🔄 Intentando login con Google en:', API_URL + '/api/auth/google');
+      const response = await api.post('/api/auth/google', { credential });
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+      }
+      return response.data;
+    } catch (error) {
+      console.error('❌ Error en login con Google:', error);
+      throw error.response?.data || { message: 'Error en el servidor' };
+    }
+  },
+
   // Login de usuario
   login: async (credentials) => {
     try {

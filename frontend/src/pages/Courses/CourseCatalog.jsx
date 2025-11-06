@@ -23,17 +23,17 @@ const CourseCatalog = () => {
     try {
       setLoading(true);
       const params = {
-        ...(selectedCategory && { category: selectedCategory }),
-        ...(selectedLevel && { level: selectedLevel }),
-        ...(searchTerm && { search: searchTerm }),
-        ...(sortBy && { sort: sortBy })
+        ...(filters.category && { category: filters.category }),
+        ...(filters.level && { level: filters.level }),
+        ...(filters.search && { search: filters.search }),
+        ...(filters.priceRange && filters.priceRange !== 'all' && { priceRange: filters.priceRange })
       };
       
       const response = await api.get('/courses', { params });
-      const coursesData = Array.isArray(response?.data?.items) 
-        ? response.data.items 
-        : response?.data || [];
-      
+      const coursesData = Array.isArray(response?.data?.data?.courses)
+        ? response.data.data.courses
+        : [];
+
       setCourses(coursesData);
     } catch (error) {
       console.error('Error fetching courses:', error);
@@ -46,9 +46,11 @@ const CourseCatalog = () => {
   const fetchCategories = async () => {
     try {
       const response = await api.get('/categories');
-      const categoriesData = Array.isArray(response?.data?.items) 
-        ? response.data.items 
-        : response?.data || [];
+      const categoriesData = Array.isArray(response?.data?.data)
+        ? response.data.data
+        : Array.isArray(response?.data?.categories)
+          ? response.data.categories
+          : [];
       setCategories(categoriesData);
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -286,12 +288,12 @@ const CourseCatalog = () => {
                     </div>
                     <h3 className="text-2xl font-bold text-gray-900 mb-3">Cursos Próximamente</h3>
                     <p className="text-gray-500 mb-6 max-w-md mx-auto">
-                      {searchTerm || selectedCategory || selectedLevel 
+                      {filters.search || filters.category || filters.level 
                         ? 'No se encontraron cursos con los filtros seleccionados. Intenta ajustar tu búsqueda.'
                         : 'Estamos trabajando en traerte contenido educativo increíble. ¡Mantente atento a nuestros próximos lanzamientos!'
                       }
                     </p>
-                    {(!searchTerm && !selectedCategory && !selectedLevel) && (
+                    {(!filters.search && !filters.category && !filters.level) && (
                       <div className="space-y-3">
                         <p className="text-sm text-gray-400">
                           🚀 ¡Grandes cosas están por venir!

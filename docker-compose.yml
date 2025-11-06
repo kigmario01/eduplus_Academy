@@ -21,6 +21,21 @@ services:
     ports:
       - "5003:3001"
 
+  evaluation-service:
+    build:
+      context: ./services/evaluation-service
+      dockerfile: Dockerfile
+    container_name: eduplus-evaluation
+    depends_on:
+      - auth-service
+      - course-service
+    env_file:
+      - ./services/evaluation-service/.env
+    environment:
+      - PORT=5005
+    ports:
+      - "5005:5005"
+
   frontend:
     build:
       context: ./frontend
@@ -29,5 +44,6 @@ services:
     depends_on:
       - auth-service
       - course-service
+      - evaluation-service
     ports:
       - "8080:80"

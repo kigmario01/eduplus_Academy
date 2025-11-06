@@ -6,7 +6,7 @@ const getInstructorId = (req) => {
   return Number.isNaN(parsed) ? 1 : parsed;
 };
 
-// Derivar nombre del usuario desde columnas reales: name y lastname
+// Derivar nombre del usuario desde columnas reales existentes en el esquema (first_name, last_name)
 const USER_NAME_EXPR = "NULLIF(TRIM(CONCAT_WS(' ', u.name, u.lastname)), '')";
 
 export const instructorController = {

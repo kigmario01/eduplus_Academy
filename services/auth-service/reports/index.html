@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reporte de Estrés - Auth Service</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; }
+      h1 { font-size: 20px; margin: 0 0 16px; }
+      .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; }
+      .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+      .kpi { background: #f6f6f6; border-radius: 8px; padding: 12px; }
+      .kpi h3 { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: #555; }
+      .kpi .val { font-size: 18px; font-weight: 600; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+      th { background: #fafafa; }
+      .muted { color: #777; font-size: 12px; }
+      .footer { margin-top: 24px; font-size: 12px; color: #666; }
+      @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } .kpis { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+  </head>
+  <body>
+    <h1>Reporte de Estrés - Auth Service</h1>
+    <div class="muted">Fuente: <code>reports/auth-stress.json</code></div>
+    <div class="kpis" id="kpis"></div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Resumen por endpoint</h2>
+        <table id="endpoints">
+          <thead>
+            <tr>
+              <th>Endpoint</th>
+              <th>Reqs</th>
+              <th>Códigos 2xx</th>
+              <th>Min (ms)</th>
+              <th>Media (ms)</th>
+              <th>P95 (ms)</th>
+              <th>Max (ms)</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h2>Tiempo de respuesta medio</h2>
+        <canvas id="rtChart" height="200"></canvas>
+      </div>
+    </div>
+
+    <div class="footer">Generado localmente. Usa Chart.js para visualizar métricas clave.</div>
+
+    <script>
+      async function load() {
+        const res = await fetch('./auth-stress.json');
+        const data = await res.json();
+        const agg = data.aggregate || {};
+
+        const counters = agg.counters || {};
+        const summaries = agg.summaries || {};
+
+        // KPIs
+        const kpis = [
+          { label: 'VUs creados', value: counters['vusers.created'] || 0 },
+          { label: 'VUs completados', value: counters['vusers.completed'] || 0 },
+          { label: 'VUs fallidos', value: counters['vusers.failed'] || 0 },
+          { label: 'Solicitudes HTTP', value: counters['http.requests'] || 0 },
+        ];
+        document.getElementById('kpis').innerHTML = kpis.map(k => `
+          <div class="kpi"><h3>${k.label}</h3><div class="val">${k.value}</div></div>
+        `).join('');
+
+        // Endpoints que nos interesan
+        const endpoints = [
+          { key: '/health', name: '/health', code200Key: 'plugins.metrics-by-endpoint./health.codes.200' },
+          { key: '/api/auth/register', name: '/api/auth/register', code200Key: 'plugins.metrics-by-endpoint./api/auth/register.codes.201' },
+          { key: '/api/auth/login', name: '/api/auth/login', code200Key: 'plugins.metrics-by-endpoint./api/auth/login.codes.200' },
+        ];
+
+        // Construir tabla
+        const tbody = document.querySelector('#endpoints tbody');
+        const rows = [];
+        const chartLabels = [];
+        const chartMeans = [];
+
+        for (const ep of endpoints) {
+          const summaryKey = `plugins.metrics-by-endpoint.response_time.${ep.key}`;
+          const s = summaries[summaryKey];
+          if (!s) continue;
+          const reqs = counters[`plugins.metrics-by-endpoint.${ep.key}.codes.200`] || counters[ep.code200Key] || 0;
+          rows.push(`
+            <tr>
+              <td><code>${ep.name}</code></td>
+              <td>${reqs}</td>
+              <td>${reqs}</td>
+              <td>${s.min}</td>
+              <td>${s.mean}</td>
+              <td>${s.p95}</td>
+              <td>${s.max}</td>
+            </tr>
+          `);
+          chartLabels.push(ep.name);
+          chartMeans.push(s.mean);
+        }
+        tbody.innerHTML = rows.join('');
+
+        // Chart
+        const ctx = document.getElementById('rtChart');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: chartLabels,
+            datasets: [{
+              label: 'Tiempo de respuesta medio (ms)',
+              data: chartMeans,
+              backgroundColor: ['#4f46e5', '#22c55e', '#f59e0b'],
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: true } },
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+      }
+
+      load().catch(err => {
+        console.error(err);
+        document.body.insertAdjacentHTML('beforeend', `<div style="color:#b91c1c">Error cargando reporte: ${err?.message}</div>`);
+      });
+    </script>
+  </body>
+</html>

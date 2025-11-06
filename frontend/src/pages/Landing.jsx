@@ -3,6 +3,7 @@ import heroBackground from "../assets/hero-bg.svg";
 import Carousel from "../components/Carousel";
 import UpdateNotification from "../components/UpdateNotification";
 import IntegrationsCarousel from "../components/ui/IntegrationsCarousel";
+import FeedbackSection from "../components/FeedbackSection";
 
 const Landing = () => {
   return (
@@ -118,6 +119,9 @@ const Landing = () => {
         </div>
         <IntegrationsCarousel />
       </section>
+
+      {/* Feedback Section */}
+      <FeedbackSection />
 
       {/* CTA Section */}
       <div className="bg-gradient-to-br from-fuchsia-700 via-purple-800 to-indigo-800 relative overflow-hidden">

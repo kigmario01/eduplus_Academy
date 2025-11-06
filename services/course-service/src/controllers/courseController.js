@@ -6,13 +6,13 @@ import db from '../config/db.js';
 const courseSchema = Joi.object({
   title: Joi.string().min(5).max(200).required(),
   description: Joi.string().min(10).required(),
-  short_description: Joi.string().max(500).optional(),
+  short_description: Joi.string().max(500).optional().allow(''),
   category_id: Joi.number().integer().positive().required(),
   level: Joi.string().valid('beginner', 'intermediate', 'advanced').required(),
-  price: Joi.number().min(0).required(),
-  currency: Joi.string().length(3).default('USD'),
-  thumbnail_url: Joi.string().uri().optional(),
-  preview_video_url: Joi.string().uri().optional(),
+  // Eliminado manejo de precios
+  // Permitir cadenas vacías para campos opcionales de URL provenientes del frontend
+  preview_video_url: Joi.string().uri().optional().allow(''),
+  thumbnail_url: Joi.string().uri().optional().allow(''),
   duration_hours: Joi.number().integer().min(0).optional(),
   language: Joi.string().length(2).default('es'),
   requirements: Joi.array().items(Joi.string()).optional(),
@@ -39,9 +39,9 @@ export const courseController = {
       // Construir la consulta SQL base
       let query = `
         SELECT 
-          c.*,
+          c.*, 
           cc.name as category_name,
-          u.first_name || ' ' || u.last_name as instructor_name,
+          u.name || ' ' || u.lastname as instructor_name,
           COUNT(DISTINCT ce.user_id) as total_students,
           COUNT(DISTINCT cr.id) as total_reviews,
           COALESCE(AVG(cr.rating), 0) as rating
@@ -86,7 +86,7 @@ export const courseController = {
       }
 
       // Agrupar por curso
-      query += ` GROUP BY c.id, cc.name, u.first_name, u.last_name`;
+      query += ` GROUP BY c.id, cc.name, u.name, u.lastname`;
 
       // Ordenar
       const validSortFields = ['created_at', 'title', 'price', 'rating', 'total_students'];
@@ -152,10 +152,16 @@ export const courseController = {
       const countResult = await db.query(countQuery, countParams);
       const total = parseInt(countResult.rows[0].total);
 
+      // Añadir slug derivado a cada curso
+      const coursesWithSlug = result.rows.map((c) => ({
+        ...c,
+        slug: slugify(c.title || '', { lower: true, strict: true })
+      }));
+
       res.json({
         success: true,
         data: {
-          courses: result.rows,
+          courses: coursesWithSlug,
           pagination: {
             page: parseInt(page),
             limit: parseInt(limit),
@@ -179,11 +185,14 @@ export const courseController = {
       const { id } = req.params;
       
       // Consulta para obtener el curso con información relacionada
-      const courseQuery = `
+      // Determinar si el parámetro es numérico (ID) o slug
+      const isNumericId = /^\d+$/.test(id);
+
+      const courseQueryById = `
         SELECT 
-          c.*,
+          c.*, 
           cc.name as category_name,
-          u.first_name || ' ' || u.last_name as instructor_name,
+          u.name || ' ' || u.lastname as instructor_name,
           u.instructor_bio,
           u.instructor_rating,
           COUNT(DISTINCT ce.user_id) as total_students,
@@ -194,11 +203,33 @@ export const courseController = {
         LEFT JOIN users u ON c.instructor_id = u.id
         LEFT JOIN course_enrollments ce ON c.id = ce.course_id
         LEFT JOIN course_reviews cr ON c.id = cr.course_id
-        WHERE c.id = $1 OR c.slug = $1
-        GROUP BY c.id, cc.name, u.first_name, u.last_name, u.instructor_bio, u.instructor_rating
+        WHERE c.id = $1
+        GROUP BY c.id, cc.name, u.name, u.lastname, u.instructor_bio, u.instructor_rating
       `;
 
-      const courseResult = await db.query(courseQuery, [id]);
+      const courseQueryBySlug = `
+        SELECT 
+          c.*, 
+          cc.name as category_name,
+          u.name || ' ' || u.lastname as instructor_name,
+          u.instructor_bio,
+          u.instructor_rating,
+          COUNT(DISTINCT ce.user_id) as total_students,
+          COUNT(DISTINCT cr.id) as total_reviews,
+          COALESCE(AVG(cr.rating), 0) as rating
+        FROM courses c
+        LEFT JOIN course_categories cc ON c.category_id = cc.id
+        LEFT JOIN users u ON c.instructor_id = u.id
+        LEFT JOIN course_enrollments ce ON c.id = ce.course_id
+        LEFT JOIN course_reviews cr ON c.id = cr.course_id
+        WHERE LOWER(regexp_replace(regexp_replace(trim(c.title), '\\s+', '-', 'g'), '[^a-z0-9-]', '', 'g')) = $1
+        GROUP BY c.id, cc.name, u.name, u.lastname, u.instructor_bio, u.instructor_rating
+      `;
+
+      const courseResult = await db.query(
+        isNumericId ? courseQueryById : courseQueryBySlug,
+        [id]
+      );
 
       if (courseResult.rows.length === 0) {
         return res.status(404).json({
@@ -208,6 +239,12 @@ export const courseController = {
       }
 
       const course = courseResult.rows[0];
+
+      // Derivar slug
+      const courseWithSlug = {
+        ...course,
+        slug: slugify(course.title || '', { lower: true, strict: true })
+      };
 
       // Obtener secciones y lecciones del curso
       const sectionsQuery = `
@@ -236,7 +273,7 @@ export const courseController = {
       res.json({
         success: true,
         data: {
-          ...course,
+          ...courseWithSlug,
           sections: sectionsResult.rows
         }
       });
@@ -264,60 +301,51 @@ export const courseController = {
 
       const { title } = value;
       
-      // Generar slug único
-      let slug = slugify(title, { lower: true, strict: true });
-      
-      // Verificar si el slug ya existe
-      const slugCheckQuery = 'SELECT id FROM courses WHERE slug = $1';
-      const slugResult = await db.query(slugCheckQuery, [slug]);
-      
-      if (slugResult.rows.length > 0) {
-        slug = `${slug}-${Date.now()}`;
-      }
+      // Generar slug derivado (no persistente)
+      const derivedSlug = slugify(title, { lower: true, strict: true });
 
       // Insertar el nuevo curso
       const insertQuery = `
         INSERT INTO courses (
-          title, slug, description, short_description, category_id, level, 
-          price, currency, thumbnail_url, preview_video_url, duration_hours, 
-          language, requirements, what_you_learn, target_audience, instructor_id
+          title, description, short_description, category_id, level,
+          thumbnail_url, duration_hours, instructor_id
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+          $1, $2, $3, $4, $5, $6, $7, $8
         ) RETURNING *
       `;
 
       const insertValues = [
         value.title,
-        slug,
         value.description,
         value.short_description || null,
         value.category_id,
         value.level,
         value.price,
-        value.currency || 'USD',
         value.thumbnail_url || null,
-        value.preview_video_url || null,
         value.duration_hours || 0,
-        value.language || 'es',
-        value.requirements || [],
-        value.what_you_learn || [],
-        value.target_audience || [],
         1 // TODO: Obtener instructor_id del token de autenticación
       ];
 
       const result = await db.query(insertQuery, insertValues);
       const newCourse = result.rows[0];
 
+      // Añadir slug derivado a la respuesta
+      const responseCourse = {
+        ...newCourse,
+        slug: derivedSlug
+      };
+
       res.status(201).json({
         success: true,
         message: 'Curso creado exitosamente',
-        data: newCourse
+        data: responseCourse
       });
     } catch (error) {
       console.error('Error creating course:', error);
       res.status(500).json({
         success: false,
-        message: 'Error al crear el curso'
+        message: 'Error al crear el curso',
+        error: error?.message
       });
     }
   },
@@ -355,17 +383,10 @@ export const courseController = {
           short_description = $3,
           category_id = $4,
           level = $5,
-          price = $6,
-          currency = $7,
-          thumbnail_url = $8,
-          preview_video_url = $9,
-          duration_hours = $10,
-          language = $11,
-          requirements = $12,
-          what_you_learn = $13,
-          target_audience = $14,
+          thumbnail_url = $6,
+          duration_hours = $7,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = $15
+        WHERE id = $8
         RETURNING *
       `;
 
@@ -375,15 +396,8 @@ export const courseController = {
         value.short_description || null,
         value.category_id,
         value.level,
-        value.price,
-        value.currency || 'USD',
         value.thumbnail_url || null,
-        value.preview_video_url || null,
         value.duration_hours || 0,
-        value.language || 'es',
-        value.requirements || [],
-        value.what_you_learn || [],
-        value.target_audience || [],
         id
       ];
 

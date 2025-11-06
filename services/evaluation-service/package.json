@@ -1,0 +1,26 @@
+{
+  "name": "evaluation-service",
+  "version": "1.0.0",
+  "description": "Microservicio de evaluaciones (ABC) para EduPlus",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node src/index.js",
+    "start": "node src/index.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0",
+    "pg": "^8.11.3",
+    "uuid": "^9.0.1",
+    "pdf-lib": "^1.17.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  }
+}

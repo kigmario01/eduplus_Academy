@@ -17,15 +17,15 @@ class User {
   static async create(userData) {
     try {
       const client = await pool.connect();
-      const { name, lastname, email, password, role = 'student' } = userData;
+      const { name, lastname, email, password, role = 'student', email_verified = false } = userData;
       
       const query = `
         INSERT INTO users (name, lastname, email, password, role, is_active, email_verified, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5, true, false, NOW(), NOW())
+        VALUES ($1, $2, $3, $4, $5, true, $6, NOW(), NOW())
         RETURNING id, name, lastname, email, role, is_active, email_verified, created_at
       `;
       
-      const values = [name, lastname, email, password, role];
+      const values = [name, lastname, email, password, role, email_verified];
       const result = await client.query(query, values);
       client.release();
       

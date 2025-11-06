@@ -61,6 +61,32 @@ const Login = () => {
     }
   };
 
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('');
+    setLoading(true);
+    try {
+      const data = await authService.googleLogin(credentialResponse.credential);
+      const userRole = data.user?.role;
+      if (selectedRole === 'instructor' && userRole !== 'instructor') {
+        setError('❌ Acceso denegado: Tu cuenta no tiene permisos de instructor.');
+        return;
+      }
+      if (selectedRole === 'student' && userRole === 'instructor') {
+        setError('❌ Acceso denegado: Tu cuenta es de instructor. Selecciona "Instructor".');
+        return;
+      }
+      if (userRole === 'instructor') {
+        navigate('/instructor');
+      } else {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      setError(err.message || 'Error al iniciar sesión con Google.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0b0121] via-[#1a0333] to-[#0b0121] pt-24 pb-12 px-4 sm:px-6 lg:px-8 text-white">
       <div className="max-w-md mx-auto">
@@ -226,10 +252,7 @@ const Login = () => {
             </div>
 
             {/* Botones sociales */}
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              <button className="w-full inline-flex justify-center py-2 px-4 border border-white/10 rounded-md shadow-md bg-[#1e103d]/60 text-sm font-medium text-white hover:bg-[#2a1252]/80 hover:shadow-pink-500/30 transition-all duration-300">
-                Google
-              </button>
+            <div className="mt-6 grid grid-cols-2 gap-3">
               <button className="w-full inline-flex justify-center py-2 px-4 border border-white/10 rounded-md shadow-md bg-[#1e103d]/60 text-sm font-medium text-white hover:bg-[#2a1252]/80 hover:shadow-pink-500/30 transition-all duration-300">
                 Twitter
               </button>

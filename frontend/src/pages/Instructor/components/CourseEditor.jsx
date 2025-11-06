@@ -16,8 +16,6 @@ const CourseEditor = () => {
     description: '',
     category_id: '',
     level: 'beginner',
-    price: 0,
-    currency: 'USD',
     language: 'es',
     thumbnail_url: '',
     preview_video_url: '',
@@ -67,8 +65,6 @@ const CourseEditor = () => {
           description: course.description || '',
           category_id: course.category_id || '',
           level: course.level || 'beginner',
-          price: course.price || 0,
-          currency: course.currency || 'USD',
           language: course.language || 'es',
           thumbnail_url: course.thumbnail_url || '',
           preview_video_url: course.preview_video_url || '',
@@ -92,6 +88,31 @@ const CourseEditor = () => {
       ...prev,
       [name]: type === 'number' ? parseFloat(value) || 0 : value
     }));
+  };
+
+  // Subida local de imagen para thumbnail
+  const handleThumbnailFile = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('thumbnail', file);
+      const response = await api.post('/courses/upload/thumbnail', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      const url = response?.data?.url;
+      if (url) {
+        setFormData(prev => ({ ...prev, thumbnail_url: url }));
+      } else {
+        alert('No se recibió URL de imagen subida');
+      }
+    } catch (error) {
+      console.error('Error uploading thumbnail:', error);
+      alert('Error al subir la imagen');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleArrayChange = (field, index, value) => {
@@ -185,7 +206,7 @@ const CourseEditor = () => {
                 value={formData.title}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-500"
                 placeholder="Ej: Introducción a React para Principiantes"
               />
             </div>
@@ -200,7 +221,7 @@ const CourseEditor = () => {
                 value={formData.short_description}
                 onChange={handleInputChange}
                 maxLength={500}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-500"
                 placeholder="Descripción breve que aparecerá en las tarjetas de curso"
               />
             </div>
@@ -214,7 +235,7 @@ const CourseEditor = () => {
                 value={formData.category_id}
                 onChange={handleInputChange}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
               >
                 <option value="">Seleccionar categoría</option>
                 {categories.map(category => (
@@ -233,7 +254,7 @@ const CourseEditor = () => {
                 name="level"
                 value={formData.level}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
               >
                 <option value="beginner">Principiante</option>
                 <option value="intermediate">Intermedio</option>
@@ -241,33 +262,7 @@ const CourseEditor = () => {
               </select>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Precio
-              </label>
-              <div className="flex">
-                <select
-                  name="currency"
-                  value={formData.currency}
-                  onChange={handleInputChange}
-                  className="px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="MXN">MXN</option>
-                </select>
-                <input
-                  type="number"
-                  name="price"
-                  value={formData.price}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.01"
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
+            {/* Campo de precio/moneda eliminado */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -277,7 +272,7 @@ const CourseEditor = () => {
                 name="language"
                 value={formData.language}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900"
               >
                 <option value="es">Español</option>
                 <option value="en">Inglés</option>
@@ -297,7 +292,7 @@ const CourseEditor = () => {
               onChange={handleInputChange}
               required
               rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-500"
               placeholder="Describe detalladamente el contenido del curso, objetivos, metodología..."
             />
           </div>
@@ -310,16 +305,23 @@ const CourseEditor = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                URL de Imagen de Portada
+                Imagen de Portada (subir desde tu equipo)
               </label>
-              <input
-                type="url"
-                name="thumbnail_url"
-                value={formData.thumbnail_url}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="https://ejemplo.com/imagen.jpg"
-              />
+              <div className="space-y-3">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleThumbnailFile}
+                  className="w-full"
+                />
+                {formData.thumbnail_url && (
+                  <img
+                    src={formData.thumbnail_url}
+                    alt="Portada del curso"
+                    className="w-full h-40 object-cover rounded-md border"
+                  />
+                )}
+              </div>
             </div>
 
             <div>
@@ -331,7 +333,7 @@ const CourseEditor = () => {
                 name="preview_video_url"
                 value={formData.preview_video_url}
                 onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-500"
                 placeholder="https://youtube.com/watch?v=..."
               />
             </div>
@@ -348,7 +350,7 @@ const CourseEditor = () => {
                 type="text"
                 value={requirement}
                 onChange={(e) => handleArrayChange('requirements', index, e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-500"
                 placeholder="Ej: Conocimientos básicos de HTML"
               />
               <button
@@ -380,7 +382,7 @@ const CourseEditor = () => {
                 type="text"
                 value={item}
                 onChange={(e) => handleArrayChange('what_you_learn', index, e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-500"
                 placeholder="Ej: Crear aplicaciones web con React"
               />
               <button
@@ -412,7 +414,7 @@ const CourseEditor = () => {
                 type="text"
                 value={audience}
                 onChange={(e) => handleArrayChange('target_audience', index, e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-gray-900 placeholder-gray-500"
                 placeholder="Ej: Desarrolladores que quieren aprender React"
               />
               <button

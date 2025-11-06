@@ -1,0 +1,36 @@
+name: TPDP CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  backend-evaluation-service:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install deps (evaluation-service)
+        working-directory: services/evaluation-service
+        run: npm ci || npm install
+      - name: Run tests (evaluation-service)
+        working-directory: services/evaluation-service
+        run: npm test -- --ci
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install deps (frontend)
+        working-directory: frontend
+        run: npm ci || npm install
+      - name: Run tests (frontend)
+        working-directory: frontend
+        run: npm run test -- --run

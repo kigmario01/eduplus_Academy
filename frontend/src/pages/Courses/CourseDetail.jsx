@@ -14,7 +14,7 @@ import {
 import api from '@/lib/api';
 
 const CourseDetail = () => {
-  const { id } = useParams();
+  const { slug } = useParams();
   const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,13 +23,13 @@ const CourseDetail = () => {
 
   useEffect(() => {
     fetchCourseDetail();
-  }, [id]);
+  }, [slug]);
 
   const fetchCourseDetail = async () => {
     try {
       setLoading(true);
       
-      const response = await api.get(`/courses/${id}`);
+      const response = await api.get(`/courses/${slug}`);
       const courseData = response?.data;
       
       if (courseData) {
@@ -52,6 +52,12 @@ const CourseDetail = () => {
 
   const toggleWishlist = () => {
     setIsWishlisted(!isWishlisted);
+  };
+
+  const handleGoToEvaluation = () => {
+    if (course?.id) {
+      navigate(`/evaluation/${course.id}`);
+    }
   };
 
   if (loading) {
@@ -156,19 +162,25 @@ const CourseDetail = () => {
                   <div className="text-sm text-gray-500">Acceso de por vida</div>
                 </div>
 
-                <div className="space-y-3 mb-6">
-                  <button
-                    onClick={handleEnroll}
-                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                  >
-                    Matricularme ahora
-                  </button>
-                  
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={toggleWishlist}
-                      className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center"
-                    >
+            <div className="space-y-3 mb-6">
+              <button
+                onClick={handleEnroll}
+                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              >
+                Matricularme ahora
+              </button>
+              <button
+                onClick={handleGoToEvaluation}
+                className="w-full bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-600 text-white py-3 px-4 rounded-lg font-semibold hover:opacity-90 transition-opacity"
+              >
+                Ir a evaluación
+              </button>
+              
+              <div className="flex space-x-2">
+                <button
+                  onClick={toggleWishlist}
+                  className="flex-1 border border-gray-300 text-gray-700 py-2 px-4 rounded-lg font-medium hover:bg-gray-50 transition-colors flex items-center justify-center"
+                >
                       <Heart className={`h-5 w-5 mr-2 ${isWishlisted ? 'text-red-500 fill-current' : ''}`} />
                       Lista de deseos
                     </button>

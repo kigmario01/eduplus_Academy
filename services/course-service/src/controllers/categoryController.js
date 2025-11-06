@@ -14,28 +14,21 @@ export const categoryController = {
   // Obtener todas las categorías
   async getAllCategories(req, res) {
     try {
-      const { active_only = 'true' } = req.query;
-      
-      let query = `
+      // Ajustado al esquema actual (courses-schema.sql):
+      // course_categories no tiene columnas is_active ni sort_order.
+      // Se devuelve el listado con conteo de cursos publicados por categoría.
+      const query = `
         SELECT 
-          cc.*,
-          COUNT(c.id) as course_count
+          cc.id,
+          cc.name,
+          COUNT(c.id) AS course_count
         FROM course_categories cc
         LEFT JOIN courses c ON cc.id = c.category_id AND c.status = 'published'
-      `;
-      
-      const queryParams = [];
-      
-      if (active_only === 'true') {
-        query += ' WHERE cc.is_active = true';
-      }
-      
-      query += `
         GROUP BY cc.id
         ORDER BY cc.name ASC
       `;
 
-      const result = await db.query(query, queryParams);
+      const result = await db.query(query);
 
       res.json({
         success: true,
