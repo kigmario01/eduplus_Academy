@@ -17,8 +17,8 @@ import feedbackRoutes from './routes/feedbackRoutes.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
-// Forzar puerto estable para desarrollo local (evitar conflictos de env)
-const PORT = 5000;
+// Usa el puerto proporcionado por el entorno (p.ej., Render) o 5000 por defecto
+const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
