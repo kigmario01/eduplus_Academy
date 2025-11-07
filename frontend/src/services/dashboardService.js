@@ -1,4 +1,4 @@
-import api from '@/lib/api';
+import { userApi as api } from '@/lib/api';
 
 export async function fetchDashboardOverview() {
   try {

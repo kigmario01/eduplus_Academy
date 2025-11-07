@@ -5,7 +5,7 @@ import db from '../config/db.js';
 // Esquema de validación para cursos
 const courseSchema = Joi.object({
   title: Joi.string().min(5).max(200).required(),
-  description: Joi.string().min(10).required(),
+  description: Joi.string().min(50).required(),
   short_description: Joi.string().max(500).optional().allow(''),
   category_id: Joi.number().integer().positive().required(),
   level: Joi.string().valid('beginner', 'intermediate', 'advanced').required(),
@@ -13,11 +13,12 @@ const courseSchema = Joi.object({
   // Permitir cadenas vacías para campos opcionales de URL provenientes del frontend
   preview_video_url: Joi.string().uri().optional().allow(''),
   thumbnail_url: Joi.string().uri().optional().allow(''),
-  duration_hours: Joi.number().integer().min(0).optional(),
+  duration_hours: Joi.number().integer().min(1).required(),
   language: Joi.string().length(2).default('es'),
   requirements: Joi.array().items(Joi.string()).optional(),
   what_you_learn: Joi.array().items(Joi.string()).optional(),
-  target_audience: Joi.array().items(Joi.string()).optional()
+  target_audience: Joi.array().items(Joi.string()).optional(),
+  tags: Joi.array().items(Joi.string()).optional()
 });
 
 export const courseController = {
@@ -193,8 +194,6 @@ export const courseController = {
           c.*, 
           cc.name as category_name,
           u.name || ' ' || u.lastname as instructor_name,
-          u.instructor_bio,
-          u.instructor_rating,
           COUNT(DISTINCT ce.user_id) as total_students,
           COUNT(DISTINCT cr.id) as total_reviews,
           COALESCE(AVG(cr.rating), 0) as rating
@@ -204,7 +203,7 @@ export const courseController = {
         LEFT JOIN course_enrollments ce ON c.id = ce.course_id
         LEFT JOIN course_reviews cr ON c.id = cr.course_id
         WHERE c.id = $1
-        GROUP BY c.id, cc.name, u.name, u.lastname, u.instructor_bio, u.instructor_rating
+        GROUP BY c.id, cc.name, u.name, u.lastname
       `;
 
       const courseQueryBySlug = `
@@ -212,8 +211,6 @@ export const courseController = {
           c.*, 
           cc.name as category_name,
           u.name || ' ' || u.lastname as instructor_name,
-          u.instructor_bio,
-          u.instructor_rating,
           COUNT(DISTINCT ce.user_id) as total_students,
           COUNT(DISTINCT cr.id) as total_reviews,
           COALESCE(AVG(cr.rating), 0) as rating
@@ -223,7 +220,7 @@ export const courseController = {
         LEFT JOIN course_enrollments ce ON c.id = ce.course_id
         LEFT JOIN course_reviews cr ON c.id = cr.course_id
         WHERE LOWER(regexp_replace(regexp_replace(trim(c.title), '\\s+', '-', 'g'), '[^a-z0-9-]', '', 'g')) = $1
-        GROUP BY c.id, cc.name, u.name, u.lastname, u.instructor_bio, u.instructor_rating
+        GROUP BY c.id, cc.name, u.name, u.lastname
       `;
 
       const courseResult = await db.query(
@@ -308,9 +305,9 @@ export const courseController = {
       const insertQuery = `
         INSERT INTO courses (
           title, description, short_description, category_id, level,
-          thumbnail_url, duration_hours, instructor_id
+          thumbnail_url, duration_hours, instructor_id, tags
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8
+          $1, $2, $3, $4, $5, $6, $7, $8, $9
         ) RETURNING *
       `;
 
@@ -320,10 +317,10 @@ export const courseController = {
         value.short_description || null,
         value.category_id,
         value.level,
-        value.price,
         value.thumbnail_url || null,
         value.duration_hours || 0,
-        1 // TODO: Obtener instructor_id del token de autenticación
+        1, // TODO: Obtener instructor_id del token de autenticación
+        value.tags || null
       ];
 
       const result = await db.query(insertQuery, insertValues);
@@ -385,6 +382,7 @@ export const courseController = {
           level = $5,
           thumbnail_url = $6,
           duration_hours = $7,
+          tags = $9,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = $8
         RETURNING *
@@ -398,7 +396,8 @@ export const courseController = {
         value.level,
         value.thumbnail_url || null,
         value.duration_hours || 0,
-        id
+        id,
+        value.tags || null
       ];
 
       const result = await db.query(updateQuery, updateValues);

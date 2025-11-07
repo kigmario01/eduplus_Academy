@@ -18,16 +18,26 @@ export default defineConfig({
       target: 'http://localhost:4000',
       changeOrigin: true
     },
+    // CSRF token endpoint proxied to course-service
+    '/api/csrf-token': {
+      target: 'http://localhost:5003',
+      changeOrigin: true
+    },
+    // course-service (Docker maps 5003 -> 3001)
     '/api/courses': {
-      target: 'http://localhost:5000',
+      target: 'http://localhost:5003',
       changeOrigin: true
     },
     '/api/categories': {
-      target: 'http://localhost:5000',
+      target: 'http://localhost:5003',
       changeOrigin: true
     },
     '/api/instructor': {
-      target: 'http://localhost:5000',
+      target: 'http://localhost:5003',
+      changeOrigin: true
+    },
+    '/api/enrollments': {
+      target: 'http://localhost:5003',
       changeOrigin: true
     },
     '/api/evaluations': {

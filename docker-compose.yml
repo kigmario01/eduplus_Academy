@@ -1,13 +1,29 @@
 services:
+  postgres:
+    image: postgres:15
+    container_name: eduplus-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=eduplus
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
   auth-service:
     build:
       context: ./services/auth-service
       dockerfile: Dockerfile
     container_name: eduplus-auth
     env_file:
-      - ./services/auth-service/.env
+      - .env
     environment:
-      - PORT=4000
+      - PORT=${PORT:-4000}
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-me}
+    depends_on:
+      - postgres
     ports:
       - "4000:4000"
 
@@ -17,7 +33,13 @@ services:
       dockerfile: Dockerfile
     container_name: eduplus-course
     env_file:
-      - ./services/course-service/.env
+      - .env
+    environment:
+      - PORT=3001
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      - postgres
     ports:
       - "5003:3001"
 
@@ -26,13 +48,16 @@ services:
       context: ./services/evaluation-service
       dockerfile: Dockerfile
     container_name: eduplus-evaluation
-    depends_on:
-      - auth-service
-      - course-service
     env_file:
-      - ./services/evaluation-service/.env
+      - .env
     environment:
       - PORT=5005
+      - DATABASE_URL=${DATABASE_URL}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      - postgres
+      - auth-service
+      - course-service
     ports:
       - "5005:5005"
 
@@ -40,6 +65,11 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "http://localhost:5003/api"
+        VITE_COURSE_SERVICE_URL: "http://localhost:5003/api"
+        VITE_AUTH_SERVICE_URL: "http://localhost:4000/api/auth"
+        VITE_EVALUATION_SERVICE_URL: "http://localhost:5005/api/evaluations"
     container_name: eduplus-front
     depends_on:
       - auth-service
@@ -47,3 +77,6 @@ services:
       - evaluation-service
     ports:
       - "8080:80"
+
+volumes:
+  pgdata:

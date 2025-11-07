@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { courseApi } from "@/lib/api";
 import heroBackground from "../assets/hero-bg.svg";
 import Carousel from "../components/Carousel";
 import UpdateNotification from "../components/UpdateNotification";
@@ -6,6 +8,26 @@ import IntegrationsCarousel from "../components/ui/IntegrationsCarousel";
 import FeedbackSection from "../components/FeedbackSection";
 
 const Landing = () => {
+  const [featured, setFeatured] = useState(null);
+  const [loadingFeatured, setLoadingFeatured] = useState(false);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadFeatured() {
+      try {
+        setLoadingFeatured(true);
+        const res = await courseApi.get('/courses?featured=true&limit=1');
+        const items = Array.isArray(res?.data?.data) ? res.data.data : Array.isArray(res?.data) ? res.data : [];
+        if (mounted) setFeatured(items[0] || null);
+      } catch (e) {
+        // Silenciar errores en landing; sección es opcional
+      } finally {
+        if (mounted) setLoadingFeatured(false);
+      }
+    }
+    loadFeatured();
+    return () => { mounted = false; };
+  }, []);
   return (
     <div className="bg-gradient-to-br from-[#0b0121] via-[#1a0333] to-[#0b0121] text-white">
       {/* Update Notification */}
@@ -106,6 +128,60 @@ const Landing = () => {
           </div>
         </div>
       </div>
+
+      {/* Featured Course */}
+      <section className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 text-center">
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500">
+              Curso destacado
+            </h2>
+            <p className="mt-3 text-neutral-300">Una recomendación seleccionada para comenzar hoy.</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-white/5 p-6">
+            {loadingFeatured && (
+              <div className="text-center text-white/70">Cargando curso...</div>
+            )}
+            {!loadingFeatured && !featured && (
+              <div className="text-center text-white/60">No hay cursos destacados por ahora.</div>
+            )}
+            {!loadingFeatured && featured && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                <div className="md:col-span-2">
+                  <h3 className="text-2xl font-bold">{featured.title}</h3>
+                  <p className="mt-2 text-white/80">{featured.short_description || featured.description}</p>
+                  <div className="mt-4 flex flex-wrap gap-3 text-sm text-white/70">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-pink-500/20">{featured.category_name || 'Categoría'}</span>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-fuchsia-500/20 capitalize">{featured.level || 'beginner'}</span>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full bg-indigo-500/20">{featured.duration_hours || 0} horas</span>
+                  </div>
+                  <div className="mt-6 flex gap-3">
+                    <Link
+                      to={`/courses/${featured.slug || featured.id}`}
+                      className="group inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-pink-600 to-fuchsia-700 hover:from-fuchsia-700 hover:to-pink-700 transition-all shadow-lg hover:shadow-pink-500/40"
+                    >
+                      Ver curso
+                      <svg className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </Link>
+                    <Link
+                      to="/register"
+                      className="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold rounded-xl text-[#0b0121] bg-white hover:bg-neutral-200 transition-all shadow-lg hover:shadow-white/40"
+                    >
+                      Matricularme ahora
+                    </Link>
+                  </div>
+                </div>
+                <div className="relative aspect-video rounded-2xl overflow-hidden bg-white/10">
+                  <img src={featured.thumbnail_url} alt={featured.title} className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-tr from-[#0b0121]/40 to-transparent"></div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
 
       {/* Integrations Section */}
       <section className="py-24">

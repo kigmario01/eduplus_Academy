@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import api from '@/lib/api';
+import api, { initCsrf } from '@/lib/api';
 
 const CourseEditor = () => {
   const { id } = useParams();
@@ -10,6 +10,11 @@ const CourseEditor = () => {
 
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [errors, setErrors] = useState({});
+  const [draftId, setDraftId] = useState(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const autosaveTimer = useRef(null);
+  const [notice, setNotice] = useState(null);
   const [formData, setFormData] = useState({
     title: '',
     short_description: '',
@@ -21,14 +26,32 @@ const CourseEditor = () => {
     preview_video_url: '',
     requirements: [''],
     what_you_learn: [''],
-    target_audience: ['']
+    target_audience: [''],
+    duration_hours: 1,
+    tags: []
   });
 
   useEffect(() => {
+    initCsrf();
     fetchCategories();
     if (isEditing) {
       fetchCourse();
+    } else {
+      const saved = localStorage.getItem('courseDraft');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setFormData(prev => ({ ...prev, ...parsed }));
+          setDraftId(parsed?.id || null);
+        } catch {}
+      }
     }
+    autosaveTimer.current = setInterval(() => {
+      handleAutosave();
+    }, 12000);
+    return () => {
+      if (autosaveTimer.current) clearInterval(autosaveTimer.current);
+    };
   }, [id]);
 
   const fetchCategories = async () => {
@@ -88,12 +111,50 @@ const CourseEditor = () => {
       ...prev,
       [name]: type === 'number' ? parseFloat(value) || 0 : value
     }));
+    validateField(name, type === 'number' ? parseFloat(value) || 0 : value);
+  };
+
+  const validateField = (name, value) => {
+    let message = '';
+    switch (name) {
+      case 'title':
+        if (!value || value.length < 5) message = 'El título debe tener al menos 5 caracteres.';
+        break;
+      case 'description':
+        if (!value || value.length < 50) message = 'La descripción debe tener al menos 50 caracteres.';
+        break;
+      case 'category_id':
+        if (!value) message = 'Selecciona una categoría.';
+        break;
+      case 'duration_hours':
+        if (!value || value < 1) message = 'La duración debe ser al menos 1 hora.';
+        break;
+      default:
+        break;
+    }
+    setErrors(prev => ({ ...prev, [name]: message }));
+    return !message;
+  };
+
+  const validateAll = () => {
+    const fields = ['title', 'description', 'category_id', 'duration_hours'];
+    const res = fields.map(f => validateField(f, formData[f]));
+    return res.every(Boolean);
   };
 
   // Subida local de imagen para thumbnail
   const handleThumbnailFile = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      setErrors(prev => ({ ...prev, thumbnail_url: 'Formato inválido. Usa JPG, PNG o WebP.' }));
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, thumbnail_url: 'Imagen demasiado grande (máx 2MB).' }));
+      return;
+    }
     setLoading(true);
     try {
       const fd = new FormData();
@@ -104,6 +165,7 @@ const CourseEditor = () => {
       const url = response?.data?.url;
       if (url) {
         setFormData(prev => ({ ...prev, thumbnail_url: url }));
+        setErrors(prev => ({ ...prev, thumbnail_url: '' }));
       } else {
         alert('No se recibió URL de imagen subida');
       }
@@ -136,11 +198,49 @@ const CourseEditor = () => {
     }));
   };
 
+  const addTag = (tag) => {
+    if (!tag) return;
+    setFormData(prev => ({ ...prev, tags: Array.from(new Set([...(prev.tags || []), tag.trim()])) }));
+  };
+
+  const removeTag = (tag) => {
+    setFormData(prev => ({ ...prev, tags: (prev.tags || []).filter(t => t !== tag) }));
+  };
+
+  const handleAutosave = async () => {
+    try {
+      localStorage.setItem('courseDraft', JSON.stringify({ ...formData, id: draftId }));
+      if (!validateAll()) return;
+      const payload = {
+        ...formData,
+        requirements: formData.requirements.filter(r => r.trim()),
+        what_you_learn: formData.what_you_learn.filter(r => r.trim()),
+        target_audience: formData.target_audience.filter(r => r.trim())
+      };
+      if (draftId) {
+        await api.put(`/courses/${draftId}`, payload);
+        setNotice('Borrador guardado automáticamente');
+      } else {
+        const resp = await api.post('/courses', payload);
+        const newId = resp?.data?.data?.id || resp?.data?.id || null;
+        if (newId) setDraftId(newId);
+        setNotice('Borrador creado y guardado');
+      }
+    } catch (e) {
+      console.warn('Autosave error:', e?.message || e);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      if (!validateAll()) {
+        setLoading(false);
+        setNotice('Corrige los errores antes de guardar.');
+        return;
+      }
       // Filtrar arrays vacíos
       const cleanedData = {
         ...formData,
@@ -160,7 +260,9 @@ const CourseEditor = () => {
 
       if (response.data) {
         console.log('Course saved successfully:', response.data);
-        navigate('/instructor');
+        setNotice('Curso guardado correctamente');
+        const savedId = response?.data?.data?.id || response?.data?.id || draftId || id;
+        if (savedId) setDraftId(savedId);
       }
     } catch (error) {
       console.error('Error saving course:', error);
@@ -168,6 +270,32 @@ const CourseEditor = () => {
       alert(isEditing ? 'Error al actualizar el curso' : 'Error al crear el curso');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    try {
+      const targetId = isEditing ? id : draftId;
+      if (!targetId) {
+        alert('Primero guarda el curso para obtener un ID.');
+        return;
+      }
+      if (!validateAll()) {
+        alert('Corrige los errores antes de publicar.');
+        return;
+      }
+      const ok = confirm('¿Deseas publicar este curso?');
+      if (!ok) return;
+      const resp = await api.patch(`/courses/${targetId}/status`, { status: 'published' });
+      if (resp?.data?.success) {
+        setNotice('Curso publicado exitosamente');
+        const courseId = resp?.data?.data?.id || targetId;
+        navigate(`/courses/${courseId}`);
+      } else {
+        alert('No se pudo publicar el curso');
+      }
+    } catch (e) {
+      alert(`Error al publicar: ${e?.message || e}`);
     }
   };
 
@@ -188,6 +316,7 @@ const CourseEditor = () => {
         <p className="text-gray-600 mt-2">
           {isEditing ? 'Actualiza la información de tu curso' : 'Completa la información para crear tu curso'}
         </p>
+        <div aria-live="polite" className="sr-only">{notice || ''}</div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">

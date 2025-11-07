@@ -20,6 +20,7 @@ const CourseDetail = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [isWishlisted, setIsWishlisted] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
 
   useEffect(() => {
     fetchCourseDetail();
@@ -45,9 +46,28 @@ const CourseDetail = () => {
     }
   };
 
-  const handleEnroll = () => {
-    // TODO: Implementar lógica de matriculación
-    alert('Funcionalidad de matriculación en desarrollo');
+  const handleEnroll = async () => {
+    if (!course?.id) return;
+    try {
+      setEnrolling(true);
+      const res = await api.post('/enrollments/enroll', { course_id: course.id });
+      if (res?.data?.success) {
+        alert('¡Inscripción realizada exitosamente!');
+        navigate('/dashboard/courses');
+      } else {
+        alert(res?.data?.message || 'No se pudo completar la inscripción');
+      }
+    } catch (error) {
+      const message = error?.message || 'Error al realizar la inscripción';
+      if (/token/i.test(message) || /autenticación/i.test(message) || /401/.test(message)) {
+        alert('Debes iniciar sesión para inscribirte');
+        navigate('/login');
+      } else {
+        alert(message);
+      }
+    } finally {
+      setEnrolling(false);
+    }
   };
 
   const toggleWishlist = () => {
@@ -165,9 +185,10 @@ const CourseDetail = () => {
             <div className="space-y-3 mb-6">
               <button
                 onClick={handleEnroll}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                disabled={enrolling}
+                className={`w-full ${enrolling ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white py-3 px-4 rounded-lg font-semibold transition-colors`}
               >
-                Matricularme ahora
+                {enrolling ? 'Matriculando...' : 'Matricularme ahora'}
               </button>
               <button
                 onClick={handleGoToEvaluation}

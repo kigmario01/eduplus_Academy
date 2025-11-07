@@ -5,6 +5,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import db from './config/db.js';
 import courseRoutes from './routes/courseRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
@@ -24,11 +25,16 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(cookieParser());
 
 // Static files for uploaded assets
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Routes
+// CSRF token endpoint
+import { issueCsrfToken } from './middleware/csrf.js';
+app.get('/api/csrf-token', issueCsrfToken);
+
 app.use('/api/courses', courseRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/instructor', instructorRoutes);
@@ -62,6 +68,12 @@ const startServer = async () => {
   try {
     // Intentar verificar conexión a la base de datos (si está disponible)
     await db.query('SELECT 1');
+    // Ensure optional columns exist (idempotent)
+    try {
+      await db.query('ALTER TABLE courses ADD COLUMN IF NOT EXISTS tags TEXT[]');
+    } catch (e) {
+      console.warn('No se pudo asegurar columna opcional tags:', e?.message || e);
+    }
     dbReady = true;
     console.log('✅ Course Service connected to PostgreSQL database');
   } catch (error) {

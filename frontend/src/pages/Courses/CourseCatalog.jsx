@@ -11,7 +11,8 @@ const CourseCatalog = () => {
     category: '',
     level: '',
     search: '',
-    priceRange: 'all'
+    priceRange: 'all',
+    includeDrafts: false
   });
 
   useEffect(() => {
@@ -26,7 +27,9 @@ const CourseCatalog = () => {
         ...(filters.category && { category: filters.category }),
         ...(filters.level && { level: filters.level }),
         ...(filters.search && { search: filters.search }),
-        ...(filters.priceRange && filters.priceRange !== 'all' && { priceRange: filters.priceRange })
+        ...(filters.priceRange && filters.priceRange !== 'all' && { priceRange: filters.priceRange }),
+        // Mostrar borradores cuando el usuario lo indique
+        status: filters.includeDrafts ? 'all' : 'published'
       };
       
       const response = await api.get('/courses', { params });
@@ -181,8 +184,22 @@ const CourseCatalog = () => {
                 </select>
               </div>
 
+              {/* Mostrar borradores */}
+              <div className="mb-6 flex items-center gap-2">
+                <input
+                  id="includeDrafts"
+                  type="checkbox"
+                  checked={filters.includeDrafts}
+                  onChange={(e) => handleFilterChange('includeDrafts', e.target.checked)}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="includeDrafts" className="text-sm text-gray-700">
+                  Mostrar cursos en borrador (solo visible en desarrollo)
+                </label>
+              </div>
+
               <button
-                onClick={() => setFilters({ category: '', level: '', search: '', priceRange: 'all' })}
+                onClick={() => setFilters({ category: '', level: '', search: '', priceRange: 'all', includeDrafts: false })}
                 className="w-full text-blue-600 hover:text-blue-700 text-sm font-medium"
               >
                 Limpiar filtros
