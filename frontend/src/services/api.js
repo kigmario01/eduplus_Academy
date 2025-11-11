@@ -34,6 +34,30 @@ const attachAuthToken = (config) => {
 apiPrimary.interceptors.request.use(attachAuthToken, (error) => Promise.reject(error));
 apiFallback.interceptors.request.use(attachAuthToken, (error) => Promise.reject(error));
 
+// Helper: obtener mensaje de error amigable desde Axios/servidor
+const getErrorMessage = (error, fallbackMessage = 'Error en el servidor') => {
+  try {
+    const resp = error?.response;
+    const data = resp?.data;
+    const directMsg = error?.message;
+    const status = resp?.status;
+
+    const serverMsg =
+      (typeof data === 'string' ? data : null) ||
+      data?.message ||
+      data?.error ||
+      data?.detail;
+
+    const msg = serverMsg || directMsg || fallbackMessage;
+    if (status && !serverMsg && !directMsg) {
+      return `${fallbackMessage}: ${status}`;
+    }
+    return msg;
+  } catch (_) {
+    return fallbackMessage;
+  }
+};
+
 // Criterio robusto para activar fallback en desarrollo cuando el proxy falla
 const shouldFallback = (error) => {
   // Sin respuesta del servidor
@@ -42,7 +66,7 @@ const shouldFallback = (error) => {
   const msg = String(error.message || '').toLowerCase();
   const code = String(error.code || '').toLowerCase();
   // Errores típicos de proxy/servidor caído
-  const proxyStatuses = [404, 502, 503, 504];
+  const proxyStatuses = [404, 500, 502, 503, 504];
   const networkHints = [
     'network error',
     'ecconnrefused',
@@ -73,11 +97,11 @@ export const authService = {
           return fallbackRes.data;
         } catch (fallbackErr) {
           console.error('❌ Fallback de registro también falló:', fallbackErr);
-          throw fallbackErr.response?.data || { message: 'No se pudo registrar. Servicio de autenticación no disponible.' };
+          throw new Error(getErrorMessage(fallbackErr, 'No se pudo registrar. Servicio de autenticación no disponible.'));
         }
       }
       // Error con respuesta del servidor
-      throw error.response?.data || { message: `Error del servidor: ${error.response?.status || 'desconocido'}` };
+      throw new Error(getErrorMessage(error, `Error del servidor: ${error.response?.status || 'desconocido'}`));
     }
   },
 
@@ -103,11 +127,11 @@ export const authService = {
           return fallbackRes.data;
         } catch (fallbackErr) {
           console.error('❌ Fallback de Google login también falló:', fallbackErr);
-          throw fallbackErr.response?.data || { message: 'Servicio de autenticación no disponible' };
+          throw new Error(getErrorMessage(fallbackErr, 'Servicio de autenticación no disponible'));
         }
       }
       console.error('❌ Error en login con Google:', error);
-      throw error.response?.data || { message: 'Error en el servidor' };
+      throw new Error(getErrorMessage(error, 'Error en el servidor'));
     }
   },
 
@@ -137,11 +161,11 @@ export const authService = {
           return fallbackRes.data;
         } catch (fallbackErr) {
           console.error('❌ Fallback de login también falló:', fallbackErr);
-          throw fallbackErr.response?.data || { message: 'Servicio de autenticación no disponible' };
+          throw new Error(getErrorMessage(fallbackErr, 'Servicio de autenticación no disponible'));
         }
       }
       console.error('❌ Error en login:', error);
-      throw error.response?.data || { message: 'Error en el servidor' };
+      throw new Error(getErrorMessage(error, 'Error en el servidor'));
     }
   },
 
