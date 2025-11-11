@@ -11,7 +11,7 @@ import {
   Share, 
   Check 
 } from 'lucide-react';
-import api from '@/lib/api';
+import { courseApi as api } from '@/lib/api';
 
 const CourseDetail = () => {
   const { slug } = useParams();
