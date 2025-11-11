@@ -47,17 +47,15 @@ const Landing = () => {
         <div className="max-w-7xl ml-0 px-4 sm:px-6 lg:px-8 py-16 sm:py-24 relative z-10">
           <div className="relative lg:max-w-2xl">
             <div className="text-left">
-              <h1 className="text-4xl tracking-tight font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 via-pink-500 to-fuchsia-500 sm:text-5xl md:text-6xl animate-slide-up">
-                <span className="block">Aprende con</span>
-                <span className="block">EduPlus Academy</span>
+              <h1 className="text-4xl tracking-tight font-bold text-white sm:text-5xl md:text-6xl animate-slide-up">
+                <span className="block">Formación de alto nivel</span>
+                <span className="block">con EduPlus Academy</span>
               </h1>
               <p
-                className="mt-6 text-base sm:text-lg md:text-xl max-w-3xl leading-relaxed text-neutral-200 animate-slide-up"
+                className="mt-6 text-base sm:text-lg md:text-xl max-w-3xl leading-relaxed text-white/80 animate-slide-up"
                 style={{ animationDelay: "0.2s" }}
               >
-                Transforma tu futuro con nuestra plataforma educativa de
-                vanguardia. Cursos diseñados por expertos para desarrollar tus
-                habilidades y alcanzar tus metas profesionales.
+                Desarrolla tus competencias con programas diseñados por expertos y orientados a resultados. Aprende a tu ritmo con contenidos de calidad y acompañamiento permanente.
               </p>
               <div
                 className="mt-8 flex flex-col sm:flex-row justify-start gap-4 animate-slide-up"
@@ -65,7 +63,7 @@ const Landing = () => {
               >
                 <Link
                   to="/register"
-                  className="group px-8 py-3 rounded-xl text-base font-medium text-white bg-gradient-to-r from-pink-600 to-fuchsia-700 hover:from-fuchsia-700 hover:to-pink-700 transition-all duration-300 shadow-lg hover:shadow-pink-500/40 transform hover:-translate-y-1 hover:scale-105 active:scale-95 md:py-4 md:text-lg md:px-10"
+                  className="group px-8 py-3 rounded-xl text-base font-medium text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500 transition-colors duration-200 shadow-lg md:py-4 md:text-lg md:px-10"
                 >
                   <span className="flex items-center gap-2">
                     Comenzar ahora
@@ -86,7 +84,7 @@ const Landing = () => {
                 </Link>
                 <Link
                   to="/courses"
-                  className="group px-8 py-3 rounded-xl text-base font-medium text-[#0b0121] bg-white hover:bg-neutral-200 transition-all duration-300 shadow-lg hover:shadow-white/40 transform hover:-translate-y-1 hover:scale-105 active:scale-95 md:py-4 md:text-lg md:px-10"
+                  className="group px-8 py-3 rounded-xl text-base font-medium text-[#0b0121] bg-white hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300 transition-colors duration-200 shadow-lg md:py-4 md:text-lg md:px-10"
                 >
                   <span className="flex items-center gap-2">
                     Ver cursos
@@ -186,12 +184,8 @@ const Landing = () => {
       {/* Integrations Section */}
       <section className="py-24">
         <div className="text-center mb-12">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-pink-500">
-            Nunca dejes de aprender!
-          </h2>
-          <p className="mt-4 text-neutral-300 text-lg">
-            ¡Aprende con nosotros y diviertete!
-          </p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-white">Compromiso con tu aprendizaje continuo</h2>
+          <p className="mt-4 text-white/80 text-lg">Impulsa tu carrera con formación rigurosa y experiencias prácticas.</p>
         </div>
         <IntegrationsCarousel />
       </section>

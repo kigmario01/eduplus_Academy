@@ -10,7 +10,7 @@ const AUTH_SERVICE_URL = isDevelopment
 
 const COURSE_SERVICE_URL = isDevelopment 
   ? '/api' 
-  : import.meta.env.VITE_COURSE_SERVICE_URL || 'https://your-course-service.onrender.com';
+  : (import.meta.env.VITE_COURSE_SERVICE_URL || '/api');
 
 const EVALUATION_SERVICE_URL = isDevelopment
   ? '/api/evaluations'
@@ -72,8 +72,31 @@ const setupInterceptors = (apiInstance) => {
   // Manejo básico de respuestas/errores
   apiInstance.interceptors.response.use(
     (response) => response,
-    (error) => {
-      const message = error?.response?.data?.message || error.message || 'Error de red';
+    async (error) => {
+      const config = error?.config || {};
+      const isNetworkError = !error.response;
+      const status = error?.response?.status;
+      const method = (config.method || '').toLowerCase();
+      const shouldRetry = method === 'get' && (isNetworkError || (status && status >= 500));
+
+      // Reintentos exponenciales (máx 3) solo para GET idempotentes
+      if (shouldRetry) {
+        config.__retryCount = (config.__retryCount || 0) + 1;
+        if (config.__retryCount <= 3) {
+          const delayMs = Math.min(2000, 250 * Math.pow(2, config.__retryCount - 1)) + Math.round(Math.random() * 150);
+          await new Promise((r) => setTimeout(r, delayMs));
+          try {
+            return await apiInstance.request(config);
+          } catch (e) {
+            // seguirá al manejo final abajo
+            error = e;
+          }
+        }
+      }
+
+      const message = isNetworkError
+        ? 'No se pudo conectar con el servidor. Verifica tu conexión.'
+        : (error?.response?.data?.message || error.message || 'Error de red');
       return Promise.reject(new Error(message));
     }
   );

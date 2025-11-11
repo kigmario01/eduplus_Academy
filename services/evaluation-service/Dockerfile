@@ -2,7 +2,7 @@ FROM node:18-alpine
 WORKDIR /usr/src/app
 
 # Copia package.json y lock para builds reproducibles
-COPY package.json package-lock.json .
+COPY package.json package-lock.json.
 # Instala solo dependencias de producción usando el lock
 RUN npm ci --omit=dev
 
