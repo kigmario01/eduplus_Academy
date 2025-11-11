@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import api from '@/lib/api';
+import { courseApi as api } from '@/lib/api';
 
 const CourseCatalog = () => {
   const [courses, setCourses] = useState([]);

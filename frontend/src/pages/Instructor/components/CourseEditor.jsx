@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import api, { initCsrf } from '@/lib/api';
+import { courseApi as api, initCsrf } from '@/lib/api';
 
 const CourseEditor = () => {
   const { id } = useParams();
