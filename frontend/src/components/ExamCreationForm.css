@@ -8,6 +8,7 @@
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  color: #1f2937; /* Texto oscuro para legibilidad en modo oscuro */
 }
 
 .exam-creation-form h3 {
@@ -100,6 +101,7 @@
   font-size: 0.875rem;
   transition: all 0.2s ease;
   background: #ffffff;
+  color: #111827; /* Asegura texto oscuro en campos */
 }
 
 .form-group input:focus,
@@ -128,6 +130,12 @@
   margin-top: 0.25rem;
   display: block;
   font-weight: 500;
+}
+
+/* Placeholders con contraste */
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+  color: #9ca3af;
 }
 
 .error-message {
