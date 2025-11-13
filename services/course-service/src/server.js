@@ -25,8 +25,12 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 const defaultAllowedOrigins = [
   'https://eduplus-academy-ty5x.vercel.app',
+  'https://eduplus-academy.onrender.com',
+  'https://eduplus-academy.vercel.app',
+  'https://eduplus-academy-ty5x-git-main-eduplus-academy.vercel.app',
   'http://localhost:5173',
-  'http://localhost:3000'
+  'http://localhost:3000',
+  '*'
 ];
 
 const envAllowedOrigins = [
@@ -40,11 +44,13 @@ const envAllowedOrigins = [
   .filter(Boolean);
 
 const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowedOrigins]));
+const hasWildcardOrigin = allowedOrigins.includes('*');
 const allowedMethods = ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'];
 const allowedHeaders = ['Content-Type', 'Authorization', 'X-CSRF-Token'];
 
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
+  if (hasWildcardOrigin) return true;
   return allowedOrigins.some((allowed) => origin === allowed || origin.startsWith(`${allowed}/`));
 };
 
