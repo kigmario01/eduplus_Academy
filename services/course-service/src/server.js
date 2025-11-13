@@ -25,33 +25,29 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 const defaultAllowedOrigins = [
   'https://eduplus-academy-ty5x.vercel.app',
+  'https://eduplus-academy.onrender.com',
+  'https://eduplus-academy.vercel.app',
+  'https://eduplus-academy-ty5x-git-main-eduplus-academy.vercel.app',
   'http://localhost:5173',
   'http://localhost:3000'
 ];
 
-const envAllowedOrigins = [
-  process.env.ALLOWED_ORIGINS || '',
-  process.env.CORS_ORIGIN || ''
-]
+const envAllowedOrigins = [process.env.ALLOWED_ORIGINS, process.env.CORS_ORIGIN]
   .filter(Boolean)
-  .join(',')
-  .split(',')
-  .map((o) => o.trim())
+  .flatMap((value) => value.split(','))
+  .map((value) => value.trim())
   .filter(Boolean);
 
 const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowedOrigins]));
-const allowedMethods = ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'];
+const allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
 const allowedHeaders = ['Content-Type', 'Authorization', 'X-CSRF-Token'];
 
-const isOriginAllowed = (origin) => {
-  if (!origin) return true;
-  return allowedOrigins.some((allowed) => origin === allowed || origin.startsWith(`${allowed}/`));
-};
-
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (isOriginAllowed(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS: ' + origin));
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
   },
   methods: allowedMethods,
   allowedHeaders,
@@ -59,10 +55,14 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
-// Asegurar headers CORS incluso si otro middleware falla
+const corsMiddleware = cors(corsOptions);
+app.use(corsMiddleware);
+app.options('*', corsMiddleware);
+
+// Headers manuales para garantizar respuesta a los preflight
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (isOriginAllowed(origin)) {
+  if (!origin || allowedOrigins.includes(origin)) {
     if (origin) {
       res.header('Access-Control-Allow-Origin', origin);
       res.header('Vary', 'Origin');
@@ -70,13 +70,12 @@ app.use((req, res, next) => {
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Methods', allowedMethods.join(','));
     res.header('Access-Control-Allow-Headers', allowedHeaders.join(','));
-    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(204);
+    }
   }
   next();
 });
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
