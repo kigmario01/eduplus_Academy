@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const DEFAULT_COURSE_SERVICE_URL = 'https://eduplus-course-svc.onrender.com/api';
+const DEFAULT_COURSE_SERVICE_URL = 'https://eduplus-academy.onrender.com/api';
 const LOCAL_COURSE_SERVICE_URL = 'http://localhost:5003/api';
 const API_BASE_URL = import.meta.env.VITE_COURSE_SERVICE_URL
   || (import.meta.env.DEV ? LOCAL_COURSE_SERVICE_URL : DEFAULT_COURSE_SERVICE_URL);

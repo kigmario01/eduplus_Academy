@@ -6,7 +6,7 @@ import axios from 'axios';
 const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 // Usa la variable de entorno si está definida; si tu backend expone /api, inclúyelo.
 // Ejemplo: VITE_AUTH_SERVICE_URL="https://tu-auth-svc.onrender.com/api/auth"
-export const API_URL = import.meta.env?.VITE_AUTH_SERVICE_URL || 'https://eduplus-auth-service.onrender.com/api/auth';
+export const API_URL = import.meta.env?.VITE_AUTH_SERVICE_URL || 'https://eduplus-academy.onrender.com/api/auth';
 const API_PRIMARY = isDevelopment ? '/api/auth' : API_URL;
 const API_FALLBACK = API_URL;
 

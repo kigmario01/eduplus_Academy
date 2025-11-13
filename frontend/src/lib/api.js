@@ -3,9 +3,9 @@ import axios from 'axios';
 // Configuración de URLs para diferentes servicios
 const isDevelopment = import.meta.env.DEV;
 
-const DEFAULT_AUTH_SERVICE_URL = 'https://eduplus-auth-service.onrender.com/api/auth';
-const DEFAULT_COURSE_SERVICE_URL = 'https://eduplus-course-svc.onrender.com/api';
-const DEFAULT_EVALUATION_SERVICE_URL = 'https://eduplus-evaluation-service.onrender.com/api/evaluations';
+const DEFAULT_AUTH_SERVICE_URL = 'https://eduplus-academy.onrender.com/api/auth';
+const DEFAULT_COURSE_SERVICE_URL = 'https://eduplus-academy.onrender.com/api';
+const DEFAULT_EVALUATION_SERVICE_URL = 'https://eduplus-academy.onrender.com/api/evaluations';
 
 // URLs base para cada servicio
 const AUTH_SERVICE_URL = isDevelopment
