@@ -92,6 +92,7 @@ app.get('/api/csrf-token', issueCsrfToken);
 app.use('/api/courses', courseRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/instructors', instructorRoutes);
+app.use('/api/instructor', instructorRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/sections', courseSectionRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
