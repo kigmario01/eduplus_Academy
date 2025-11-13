@@ -39,12 +39,19 @@ const envAllowedOrigins = [process.env.ALLOWED_ORIGINS, process.env.CORS_ORIGIN]
   .filter(Boolean);
 
 const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowedOrigins]));
+const hasWildcardOrigin = allowedOrigins.includes('*');
 const allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
 const allowedHeaders = ['Content-Type', 'Authorization', 'X-CSRF-Token'];
 
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  if (hasWildcardOrigin) return true;
+  return allowedOrigins.includes(origin);
+};
+
 const corsOptions = {
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       return callback(null, true);
     }
     return callback(new Error(`Not allowed by CORS: ${origin}`));
@@ -62,7 +69,7 @@ app.options('*', corsMiddleware);
 // Headers manuales para garantizar respuesta a los preflight
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (!origin || allowedOrigins.includes(origin)) {
+  if (isOriginAllowed(origin)) {
     if (origin) {
       res.header('Access-Control-Allow-Origin', origin);
       res.header('Vary', 'Origin');
