@@ -5,7 +5,12 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-
+# on:
+#   schedule:
+#     # Runs every Friday at 15:00 UTC (3 PM)
+#     - cron: '0 15 * * 5'
+#   workflow_dispatch: # Allows manual trigger for testing
+# NO ESTÁ ACTIVO 
 jobs:
   build-and-deploy-frontend:
     if: ${{ secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID_FRONTEND != '' }}
