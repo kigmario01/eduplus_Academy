@@ -11,6 +11,8 @@ import InstructorDashboard from './pages/Instructor/InstructorDashboard';
 // Admin panel removido
 import CourseCatalog from './pages/Courses/CourseCatalog';
 import CourseDetail from './pages/Courses/CourseDetail';
+import CourseCreationFlow from './pages/CourseCreationFlow';
+import CreateCourseRedirect from './pages/Instructor/components/CreateCourseRedirect';
 import ProtectedRoute from './components/ProtectedRoute';
 import { authService } from './services/api';
 import EvaluationPage from './pages/Evaluation/Evaluation';
@@ -72,6 +74,22 @@ const AnimatedRoutes = () => {
             element={
               <ProtectedRoute requiredRole="instructor">
                 <InstructorDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/instructor/create" 
+            element={
+              <ProtectedRoute requiredRole="instructor">
+                <CreateCourseRedirect />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/instructor/create-course" 
+            element={
+              <ProtectedRoute requiredRole="instructor">
+                <CourseCreationFlow />
               </ProtectedRoute>
             } 
           />

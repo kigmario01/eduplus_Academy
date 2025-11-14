@@ -3,18 +3,22 @@ import axios from 'axios';
 // Configuración de URLs para diferentes servicios
 const isDevelopment = import.meta.env.DEV;
 
-// URLs base para cada servicio
-const AUTH_SERVICE_URL = isDevelopment 
-  ? '/api/auth' 
-  : import.meta.env.VITE_AUTH_SERVICE_URL || 'https://your-auth-service.onrender.com';
+const DEFAULT_AUTH_SERVICE_URL = 'https://eduplus-auth-service.onrender.com/api/auth';
+const DEFAULT_COURSE_SERVICE_URL = 'https://eduplus-course-service.onrender.com/api';
+const DEFAULT_EVALUATION_SERVICE_URL = 'https://eduplus-evaluation-service.onrender.com/api/evaluations';
 
-const COURSE_SERVICE_URL = isDevelopment 
-  ? '/api' 
-  : import.meta.env.VITE_COURSE_SERVICE_URL || 'https://your-course-service.onrender.com';
+// URLs base para cada servicio
+const AUTH_SERVICE_URL = isDevelopment
+  ? '/api/auth'
+  : import.meta.env.VITE_AUTH_SERVICE_URL || DEFAULT_AUTH_SERVICE_URL;
+
+const COURSE_SERVICE_URL = isDevelopment
+  ? '/api'
+  : import.meta.env.VITE_COURSE_SERVICE_URL || DEFAULT_COURSE_SERVICE_URL;
 
 const EVALUATION_SERVICE_URL = isDevelopment
   ? '/api/evaluations'
-  : import.meta.env.VITE_EVALUATION_SERVICE_URL || 'https://your-evaluation-service.onrender.com/api/evaluations';
+  : import.meta.env.VITE_EVALUATION_SERVICE_URL || DEFAULT_EVALUATION_SERVICE_URL;
 
 // Crear instancias de axios para cada servicio
 const authApi = axios.create({
@@ -35,9 +39,10 @@ const evaluationApi = axios.create({
 // Cliente para endpoints de usuarios en auth-service (/api/users)
 const USER_SERVICE_URL = isDevelopment
   ? '/api/users'
-  : (import.meta.env.VITE_AUTH_SERVICE_URL
+  : import.meta.env.VITE_USER_SERVICE_URL
+    || (import.meta.env.VITE_AUTH_SERVICE_URL
       ? import.meta.env.VITE_AUTH_SERVICE_URL.replace('/api/auth', '/api/users')
-      : 'https://your-auth-service.onrender.com/api/users');
+      : DEFAULT_AUTH_SERVICE_URL.replace('/api/auth', '/api/users'));
 
 const userApi = axios.create({
   baseURL: USER_SERVICE_URL,
@@ -46,7 +51,7 @@ const userApi = axios.create({
 
 // API principal (mantiene compatibilidad)
 const api = axios.create({
-  baseURL: isDevelopment ? '/api' : (import.meta.env.VITE_API_URL || '/api'),
+  baseURL: COURSE_SERVICE_URL,
   timeout: 15000,
 });
 
@@ -72,8 +77,31 @@ const setupInterceptors = (apiInstance) => {
   // Manejo básico de respuestas/errores
   apiInstance.interceptors.response.use(
     (response) => response,
-    (error) => {
-      const message = error?.response?.data?.message || error.message || 'Error de red';
+    async (error) => {
+      const config = error?.config || {};
+      const isNetworkError = !error.response;
+      const status = error?.response?.status;
+      const method = (config.method || '').toLowerCase();
+      const shouldRetry = method === 'get' && (isNetworkError || (status && status >= 500));
+
+      // Reintentos exponenciales (máx 3) solo para GET idempotentes
+      if (shouldRetry) {
+        config.__retryCount = (config.__retryCount || 0) + 1;
+        if (config.__retryCount <= 3) {
+          const delayMs = Math.min(2000, 250 * Math.pow(2, config.__retryCount - 1)) + Math.round(Math.random() * 150);
+          await new Promise((r) => setTimeout(r, delayMs));
+          try {
+            return await apiInstance.request(config);
+          } catch (e) {
+            // seguirá al manejo final abajo
+            error = e;
+          }
+        }
+      }
+
+      const message = isNetworkError
+        ? 'No se pudo conectar con el servidor. Verifica tu conexión.'
+        : (error?.response?.data?.message || error.message || 'Error de red');
       return Promise.reject(new Error(message));
     }
   );

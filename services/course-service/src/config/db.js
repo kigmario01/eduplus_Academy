@@ -17,12 +17,12 @@ if (!connectionString) {
     }
   };
 } else {
+  const isLocal = /localhost|127\.0\.0\.1/.test(connectionString);
+  const sslConfig = isLocal ? false : { require: true, rejectUnauthorized: false };
+
   client = new Pool({
     connectionString,
-    ssl: {
-      require: true,
-      rejectUnauthorized: false, // obligatorio en Neon y Render
-    },
+    ssl: sslConfig,
     connectionTimeoutMillis: 10000, // evita bloqueos por latencia
     idleTimeoutMillis: 30000,       // cierra conexiones inactivas
   });

@@ -1,4 +1,4 @@
-import { evaluationApi } from '@/lib/api';
+import { evaluationApi, EVALUATION_SERVICE_URL } from '@/lib/api';
 
 export const evaluationService = {
   async getByCourse(courseId) {
@@ -22,7 +22,7 @@ export const evaluationService = {
     return res.data;
   },
   getCertificatePdfUrl(id) {
-    return `/api/evaluations/certificates/${id}/pdf`;
+    return `${EVALUATION_SERVICE_URL}/certificates/${id}/pdf`;
   },
 };
 

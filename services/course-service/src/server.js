@@ -14,6 +14,7 @@ import messageRoutes from './routes/messageRoutes.js';
 import courseSectionRoutes from './routes/courseSectionRoutes.js';
 import enrollmentRoutes from './routes/enrollmentRoutes.js';
 import feedbackRoutes from './routes/feedbackRoutes.js';
+import courseCreationRoutes from './routes/courseCreation.routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,7 +23,66 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+const defaultAllowedOrigins = [
+  'https://eduplus-academy-ty5x.vercel.app',
+  'https://eduplus-academy.onrender.com',
+  'https://eduplus-academy.vercel.app',
+  'https://eduplus-academy-ty5x-git-main-eduplus-academy.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+
+const envAllowedOrigins = [process.env.ALLOWED_ORIGINS, process.env.CORS_ORIGIN]
+  .filter(Boolean)
+  .flatMap((value) => value.split(','))
+  .map((value) => value.trim())
+  .filter(Boolean);
+
+const allowedOrigins = Array.from(new Set([...defaultAllowedOrigins, ...envAllowedOrigins]));
+const hasWildcardOrigin = allowedOrigins.includes('*');
+const allowedMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'];
+const allowedHeaders = ['Content-Type', 'Authorization', 'X-CSRF-Token'];
+
+const isOriginAllowed = (origin) => {
+  if (!origin) return true;
+  if (hasWildcardOrigin) return true;
+  return allowedOrigins.includes(origin);
+};
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (isOriginAllowed(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`Not allowed by CORS: ${origin}`));
+  },
+  methods: allowedMethods,
+  allowedHeaders,
+  credentials: true,
+  optionsSuccessStatus: 204
+};
+
+const corsMiddleware = cors(corsOptions);
+app.use(corsMiddleware);
+app.options('*', corsMiddleware);
+
+// Headers manuales para garantizar respuesta a los preflight
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (isOriginAllowed(origin)) {
+    if (origin) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Vary', 'Origin');
+    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', allowedMethods.join(','));
+    res.header('Access-Control-Allow-Headers', allowedHeaders.join(','));
+    if (req.method === 'OPTIONS') {
+      return res.sendStatus(204);
+    }
+  }
+  next();
+});
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
@@ -37,11 +97,13 @@ app.get('/api/csrf-token', issueCsrfToken);
 
 app.use('/api/courses', courseRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/instructors', instructorRoutes);
 app.use('/api/instructor', instructorRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/sections', courseSectionRoutes);
 app.use('/api/enrollments', enrollmentRoutes);
 app.use('/api/feedback', feedbackRoutes);
+app.use('/api/course-creation', courseCreationRoutes);
 
 // Health check
 app.get('/health', (req, res) => {
