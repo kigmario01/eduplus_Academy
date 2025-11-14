@@ -15,6 +15,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { authService } from './services/api';
 import EvaluationPage from './pages/Evaluation/Evaluation';
 import MyCertificates from './pages/Certificates/MyCertificates';
+import ErrorButton from './components/ErrorButton';
 
 // Componente para manejar las transiciones de página
 const AnimatedRoutes = () => {
@@ -116,13 +117,7 @@ const AnimatedRoutes = () => {
 function App() {
   return (
     <Router>
-      <button
-        type="button"
-        className="fixed bottom-4 right-4 z-50 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded shadow"
-        onClick={() => { throw new Error('This is your first error!') }}
-      >
-        Break the world
-      </button>
+      <ErrorButton />
       <AnimatedRoutes />
     </Router>
   );
