@@ -17,14 +17,12 @@ if (!connectionString) {
     }
   };
 } else {
+  const shouldUseSSL = /sslmode=require/i.test(connectionString);
   client = new Pool({
     connectionString,
-    ssl: {
-      require: true,
-      rejectUnauthorized: false, // obligatorio en Neon y Render
-    },
-    connectionTimeoutMillis: 10000, // evita bloqueos por latencia
-    idleTimeoutMillis: 30000,       // cierra conexiones inactivas
+    ssl: shouldUseSSL ? { require: true, rejectUnauthorized: false } : false,
+    connectionTimeoutMillis: 10000,
+    idleTimeoutMillis: 30000,
   });
 
   client.on('connect', () => {

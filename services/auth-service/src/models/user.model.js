@@ -71,6 +71,33 @@ class User {
     return parseInt(result.rows[0].count) > 0;
   }
 
+  static async findAnyByEmail(email) {
+    const query = `
+      SELECT id, name, lastname, email, password, role, is_active, email_verified, created_at
+      FROM users 
+      WHERE email = $1
+    `;
+    const result = await pool.query(query, [email]);
+    return result.rows[0] || null;
+  }
+
+  static async reactivateByEmail(email, { name, lastname, password, role = 'student' }) {
+    const query = `
+      UPDATE users
+      SET 
+        name = COALESCE($2, name),
+        lastname = COALESCE($3, lastname),
+        password = COALESCE($4, password),
+        role = COALESCE($5, role),
+        is_active = true,
+        updated_at = NOW()
+      WHERE email = $1
+      RETURNING id, name, lastname, email, role, is_active, email_verified, created_at
+    `;
+    const result = await pool.query(query, [email, name, lastname, password, role]);
+    return result.rows[0] || null;
+  }
+
   // Obtener todos los usuarios (sin contraseñas)
   static async findAll() {
     const query = `

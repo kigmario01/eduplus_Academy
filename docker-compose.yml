@@ -7,7 +7,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=eduplus
     ports:
-      - "5432:5432"
+      - "5555:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -20,8 +20,8 @@ services:
       - .env
     environment:
       - PORT=${PORT:-4000}
-      - DATABASE_URL=${DATABASE_URL}
-      - JWT_SECRET=${JWT_SECRET:-dev-secret-change-me}
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/eduplus
+      - JWT_SECRET=test-secret
     depends_on:
       - postgres
     ports:
@@ -36,8 +36,7 @@ services:
       - .env
     environment:
       - PORT=3001
-      - DATABASE_URL=${DATABASE_URL}
-      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/eduplus
     depends_on:
       - postgres
     ports:
@@ -52,8 +51,8 @@ services:
       - .env
     environment:
       - PORT=5005
-      - DATABASE_URL=${DATABASE_URL}
-      - JWT_SECRET=${JWT_SECRET}
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/eduplus
+      - JWT_SECRET=test-secret
     depends_on:
       - postgres
       - auth-service

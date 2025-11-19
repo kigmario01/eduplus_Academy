@@ -9,27 +9,56 @@ const googleClient = googleClientId ? new OAuth2Client(googleClientId) : null;
 export const register = async (req, res) => {
   try {
     const { name, lastname, email, password, role } = req.body;
+    const errors = [];
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.push('Email inválido');
+    }
+    if (!password || password.length < 8) {
+      errors.push('La contraseña debe tener al menos 8 caracteres');
+    }
+    if (!name || typeof name !== 'string') {
+      errors.push('Nombre inválido');
+    }
+    if (errors.length) {
+      return res.status(400).json({ success: false, message: 'Datos inválidos', errors });
+    }
     
     // Verificar si el usuario ya existe
     const exists = await User.existsByEmail(email);
     if (exists) {
-      return res.status(400).json({ message: "El usuario ya existe" });
+      return res.status(400).json({ success: false, message: "El email ya está registrado" });
     }
 
     // Hashear la contraseña
     const hashed = await bcrypt.hash(password, 10);
     
-    // Crear el usuario
-    const user = await User.create({ 
-      name, 
-      lastname, 
-      email, 
-      password: hashed, 
-      role: role || 'student' 
-    });
+    // Crear usuario o reactivar si existe
+    let user;
+    try {
+      user = await User.create({ 
+        name, 
+        lastname: lastname || '', 
+        email, 
+        password: hashed, 
+        role: role || 'student' 
+      });
+    } catch (err) {
+      // Manejar duplicado por restricción única
+      if (err && err.code === '23505') {
+        user = await User.reactivateByEmail(email, { name, lastname: lastname || '', password: hashed, role: role || 'student' });
+      } else {
+        throw err;
+      }
+    }
 
     res.status(201).json({ 
+      success: true,
       message: "Usuario registrado exitosamente",
+      data: {
+        userId: user.id,
+        email: user.email,
+        role: user.role
+      },
       user: {
         id: user.id,
         name: user.name,
@@ -40,7 +69,7 @@ export const register = async (req, res) => {
     });
   } catch (error) {
     console.error('Error en registro:', error);
-    res.status(500).json({ message: "Error al registrar", error: error.message });
+    res.status(500).json({ success: false, message: "Error al registrar", error: error.message });
   }
 };
 
@@ -54,7 +83,7 @@ export const login = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       console.log('❌ Usuario no encontrado:', email);
-      return res.status(404).json({ message: "Usuario no encontrado" });
+      return res.status(404).json({ success: false, message: "Usuario no encontrado" });
     }
 
     console.log('✅ Usuario encontrado:', user.email);
@@ -63,7 +92,7 @@ export const login = async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
       console.log('❌ Contraseña inválida para:', email);
-      return res.status(401).json({ message: "Credenciales inválidas" });
+      return res.status(401).json({ success: false, message: "Contraseña inválida" });
     }
 
     console.log('✅ Contraseña válida para:', email);
@@ -73,7 +102,7 @@ export const login = async (req, res) => {
 
     // Generar token JWT
     const token = jwt.sign(
-      { id: user.id, role: user.role, email: user.email },
+      { userId: user.id, role: user.role, email: user.email },
       process.env.JWT_SECRET || 'fallback_secret_key',
       { expiresIn: "1d" }
     );
@@ -81,6 +110,7 @@ export const login = async (req, res) => {
     console.log('✅ Login exitoso para:', email);
 
     res.json({ 
+      success: true,
       token, 
       user: { 
         id: user.id, 
@@ -92,7 +122,7 @@ export const login = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error en login:', error);
-    res.status(500).json({ message: "Error en el login", error: error.message });
+    res.status(500).json({ success: false, message: "Error en el login", error: error.message });
   }
 };
 
@@ -106,13 +136,14 @@ export const getUsers = async (req, res) => {
     console.log(`✅ Se encontraron ${users.length} usuarios`);
     
     res.json({
+      success: true,
       message: "Lista de usuarios obtenida exitosamente",
       count: users.length,
       users: users
     });
   } catch (error) {
     console.error('❌ Error al obtener usuarios:', error);
-    res.status(500).json({ message: "Error al obtener usuarios", error: error.message });
+    res.status(500).json({ success: false, message: "Error al obtener usuarios", error: error.message });
   }
 };
 
@@ -120,6 +151,7 @@ export const googleLogin = async (req, res) => {
   try {
     if (!googleClientId || !googleClient) {
       return res.status(500).json({
+        success: false,
         message: "Google login no está configurado",
         hint: "Falta GOOGLE_CLIENT_ID en el entorno del auth-service",
       });
@@ -127,7 +159,7 @@ export const googleLogin = async (req, res) => {
 
     const { credential } = req.body;
     if (!credential) {
-      return res.status(400).json({ message: "Falta el token de Google (credential)" });
+      return res.status(400).json({ success: false, message: "Falta el token de Google (credential)" });
     }
 
     // Verificar el ID token de Google
@@ -140,7 +172,7 @@ export const googleLogin = async (req, res) => {
     const familyName = payload?.family_name || "";
 
     if (!email) {
-      return res.status(400).json({ message: "El token de Google no contiene un email válido" });
+      return res.status(400).json({ success: false, message: "El token de Google no contiene un email válido" });
     }
 
     // Buscar o crear usuario
@@ -170,6 +202,7 @@ export const googleLogin = async (req, res) => {
     );
 
     return res.json({
+      success: true,
       token,
       user: {
         id: user.id,
@@ -181,6 +214,34 @@ export const googleLogin = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error en login con Google:", error);
-    return res.status(500).json({ message: "Error en login con Google", error: error.message });
+    return res.status(500).json({ success: false, message: "Error en login con Google", error: error.message });
   }
+};
+
+export const validateToken = async (req, res) => {
+  try {
+    const auth = req.headers.authorization || '';
+    if (!auth.toLowerCase().startsWith('bearer ')) {
+      return res.status(401).json({ valid: false, message: 'Falta token' });
+    }
+    const token = auth.slice(7);
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret_key');
+    const user = await User.findById(payload.id);
+    if (!user) {
+      return res.status(404).json({ valid: false, message: 'Usuario no encontrado' });
+    }
+    return res.status(200).json({ valid: true, user: { email: user.email, role: user.role, id: user.id } });
+  } catch (error) {
+    return res.status(401).json({ valid: false, message: 'Token inválido' });
+  }
+};
+
+export const logout = async (req, res) => {
+  return res.status(200).json({ success: true, message: 'Sesión cerrada exitosamente' });
+};
+
+export const forgotPassword = async (req, res) => {
+  const { email } = req.body || {};
+  // Política: no revelar existencia del correo
+  return res.status(200).json({ success: true, message: 'Si el email existe, se enviará un enlace de recuperación' });
 };

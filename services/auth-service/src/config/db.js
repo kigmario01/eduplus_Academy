@@ -3,12 +3,17 @@ const { Pool } = pkg;
 
 console.log("🔧 Inicializando conexión a PostgreSQL (Auth-Service)...");
 
+const shouldUseSSL = (() => {
+  const url = process.env.DATABASE_URL || '';
+  return /sslmode=require/i.test(url);
+})();
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { require: true, rejectUnauthorized: false },
-  connectionTimeoutMillis: 10000, // Espera máxima para conexión
-  idleTimeoutMillis: 10000,       // Cierra rápido conexiones inactivas
-  max: 10                         // Evita exceso de conexiones simultáneas
+  ssl: shouldUseSSL ? { require: true, rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 10000,
+  max: 10
 });
 
 // Evento de conexión
