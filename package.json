@@ -1,15 +1,9 @@
 {
   "scripts": {
-    "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --rootDir docs/tpdp/test-examples --testTimeout=30000",
-    "test:integration:coverage": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --rootDir docs/tpdp/test-examples --coverage --collectCoverageFrom=\"docs/tpdp/test-examples/**/*.js\" --coverageDirectory=docs/tpdp/reports/coverage --coverageReporters=text --coverageReporters=html --coverageReporters=lcov --testTimeout=30000",
-    "test:integration:auth": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --rootDir docs/tpdp/test-examples --testTimeout=30000 auth-integration.test.js",
-    "test:integration:courses": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --rootDir docs/tpdp/test-examples --testTimeout=30000 course-integration.test.js",
-    "test:integration:evaluation": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --rootDir docs/tpdp/test-examples --testTimeout=30000 evaluation-integration.test.js",
-    "test:integration:services": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --rootDir docs/tpdp/test-examples --testTimeout=30000 service-integration.test.js"
+    "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --rootDir tests/integration --testTimeout=30000",
+    "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand"
   },
   "devDependencies": {
-    "jest": "^30.2.0",
-    "supertest": "^7.1.4",
-    "jsonwebtoken": "^9.0.2"
+    "jest": "^29.7.0"
   }
 }

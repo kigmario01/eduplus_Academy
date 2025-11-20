@@ -6,9 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "dev": "node src/index.js",
-    "start": "node src/index.js",
-    "test": "jest",
-    "test:coverage": "jest --coverage"
+    "start": "node src/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -20,8 +18,5 @@
     "uuid": "^9.0.1",
     "pdf-lib": "^1.17.1"
   },
-  "devDependencies": {
-    "jest": "^29.7.0",
-    "supertest": "^6.3.3"
-  }
+  "devDependencies": {}
 }

@@ -1,0 +1,71 @@
+# Continuous Integration: build y verificación básica de servicios
+# - Ejecuta build del frontend
+# - Construye y levanta stack Docker para microservicios
+# - Realiza health checks HTTP mínimos
+
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  backend-stack:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Construir imágenes Docker con Compose
+        run: |
+          docker compose build auth-service course-service evaluation-service
+
+      - name: Levantar stack de servicios
+        run: |
+          docker compose up -d postgres auth-service course-service evaluation-service
+
+      - name: Esperar a que los servicios estén listos
+        run: |
+          set -e
+          echo "Esperando health checks"
+          for i in {1..60}; do
+            auth_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/health || true)
+            course_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5003/api/courses || true)
+            eval_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5005/api/evaluations/health || true)
+            if [ "$auth_code" = "200" ] && [ "$course_code" = "200" ] && [ "$eval_code" = "200" ]; then
+              echo "Servicios saludables"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Tiempo de espera agotado" && exit 1
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Instalar dependencias de frontend
+        working-directory: frontend
+        run: npm ci || npm install
+
+      - name: Lint de frontend
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build de frontend
+        working-directory: frontend
+        run: npm run build
