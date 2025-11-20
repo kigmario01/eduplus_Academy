@@ -7,9 +7,10 @@ name: CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["**"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["**"]
+  workflow_dispatch:
 
 jobs:
   backend-stack:
@@ -28,6 +29,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq curl
 
+      - name: Detectar comando docker compose
+        id: compose
+        run: |
+          if docker compose version >/dev/null 2>&1; then
+            echo "cmd=docker compose" >> $GITHUB_OUTPUT
+          else
+            echo "cmd=docker-compose" >> $GITHUB_OUTPUT
+          fi
+
       - name: Crear .env desde .env.example si falta
         run: |
           if [ ! -f ".env" ]; then
@@ -41,11 +51,11 @@ jobs:
 
       - name: Construir imágenes Docker con Compose
         run: |
-          docker compose build auth-service course-service evaluation-service
+          ${{ steps.compose.outputs.cmd }} build auth-service course-service evaluation-service
 
       - name: Levantar stack de servicios
         run: |
-          docker compose -f docker-compose.ci.yml up -d postgres auth-service course-service evaluation-service
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml up -d postgres auth-service course-service evaluation-service
 
       - name: Esperar endpoints saludables
         run: |
@@ -61,7 +71,7 @@ jobs:
             echo "Aún no... intento $i/40 (auth=$auth_code course=$course_code eval=$eval_code)"
             sleep 3
           done
-          docker compose -f docker-compose.ci.yml ps
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml ps
           echo "Tiempo de espera agotado"
           exit 1
 
