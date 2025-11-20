@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test:integration": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --rootDir tests/integration --testTimeout=30000",
+    "test:integration": "jest --config=jest.integration.config.js --runInBand --testTimeout=30000 --coverage",
     "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand"
   },
   "devDependencies": {

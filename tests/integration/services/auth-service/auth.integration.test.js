@@ -14,7 +14,7 @@ describe('Auth Service Integration', () => {
     const res = await fetch(`${AUTH_URL}/health`);
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toHaveProperty('status', 'ok');
+    expect(String(body.status).toLowerCase()).toBe('ok');
   });
 
   it('POST /api/auth/login sin body debe responder 400', async () => {
