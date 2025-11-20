@@ -34,27 +34,34 @@ jobs:
             cp .env.example .env
           fi
 
+      - name: Disable healthchecks in CI
+        run: |
+          cp docker-compose.yml docker-compose.ci.yml
+          sed -i 's/healthcheck:/# healthcheck:/g' docker-compose.ci.yml
+
       - name: Construir imágenes Docker con Compose
         run: |
           docker compose build auth-service course-service evaluation-service
 
       - name: Levantar stack de servicios
         run: |
-          docker compose up -d postgres auth-service course-service evaluation-service
+          docker compose -f docker-compose.ci.yml up -d postgres auth-service course-service evaluation-service
 
-      - name: Esperar servicios saludables
+      - name: Esperar endpoints saludables
         run: |
-          echo "Esperando que los servicios estén arriba..."
+          echo "Esperando health endpoints..."
           for i in {1..40}; do
-            HEALTHY=$(docker compose ps --format json | jq -r '.[].State.Health.Status' | grep healthy | wc -l)
-            if [ "$HEALTHY" -ge 4 ]; then
-              echo "Todos saludables"
+            auth_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/health || true)
+            course_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health || true)
+            eval_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5005/api/evaluations/health || true)
+            if [ "$auth_code" = "200" ] && [ "$course_code" = "200" ] && [ "$eval_code" = "200" ]; then
+              echo "Servicios con health OK"
               exit 0
             fi
-            echo "Aún no... intento $i/40"
+            echo "Aún no... intento $i/40 (auth=$auth_code course=$course_code eval=$eval_code)"
             sleep 3
           done
-          docker compose ps
+          docker compose -f docker-compose.ci.yml ps
           echo "Tiempo de espera agotado"
           exit 1
 
