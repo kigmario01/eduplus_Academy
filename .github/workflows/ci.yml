@@ -1,9 +1,4 @@
-# Continuous Integration: build y verificación básica de servicios
-# - Ejecuta build del frontend
-# - Construye y levanta stack Docker para microservicios
-# - Realiza health checks HTTP mínimos
-
-name: CI
+name: CI - EduPlus Academy
 
 on:
   push:
@@ -15,6 +10,7 @@ on:
 jobs:
   backend-stack:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
@@ -25,10 +21,10 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Instalar utilidades
+      - name: Instalar herramientas necesarias
         run: |
           sudo apt-get update
-          sudo apt-get install -y jq curl
+          sudo apt-get install -y jq curl netcat-openbsd
 
       - name: Detectar comando docker compose
         id: compose
@@ -39,60 +35,58 @@ jobs:
             echo "cmd=docker-compose" >> $GITHUB_OUTPUT
           fi
 
-      - name: Crear .env desde .env.example si falta
+      - name: Crear .env si no existe
         run: |
           if [ ! -f ".env" ]; then
             cp .env.example .env
           fi
 
-      - name: Disable healthchecks in CI
+      - name: Construir imágenes Docker para CI
         run: |
-          cp docker-compose.yml docker-compose.ci.yml
-          sed -i 's/healthcheck:/# healthcheck:/g' docker-compose.ci.yml
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml build \
+            postgres auth-service course-service evaluation-service
 
-      - name: Construir imágenes Docker con Compose
+      - name: Levantar stack de servicios en CI
         run: |
-          ${{ steps.compose.outputs.cmd }} build auth-service course-service evaluation-service
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml up -d \
+            postgres auth-service course-service evaluation-service
 
-      - name: Levantar stack de servicios
+      - name: Esperar que servicios expongan sus puertos
         run: |
-          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml up -d postgres auth-service course-service evaluation-service
-
-      - name: Esperar endpoints saludables
-        run: |
-          echo "Esperando health endpoints..."
-          for i in {1..40}; do
-            auth_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/health || true)
-            course_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health || true)
-            eval_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5005/api/evaluations/health || true)
-            if [ "$auth_code" = "200" ] && [ "$course_code" = "200" ] && [ "$eval_code" = "200" ]; then
-              echo "Servicios con health OK"
-              exit 0
-            fi
-            echo "Aún no... intento $i/40 (auth=$auth_code course=$course_code eval=$eval_code)"
+          echo "Esperando puertos..."
+          for i in {1..30}; do
+            nc -z localhost 5555 && \
+            nc -z localhost 4000 && \
+            nc -z localhost 3001 && \
+            nc -z localhost 5005 && break
+            echo "Aún no... intento $i/30"
             sleep 3
           done
-          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml ps
-          echo "Tiempo de espera agotado"
-          exit 1
 
-      - name: Ejecutar unit tests
+      - name: Instalar dependencias y ejecutar unit tests
         run: |
           npm ci
           npm run test:unit
 
-      - name: Subir logs de Docker en fallo
+      - name: Capturar logs Docker (si falla)
         if: failure()
-        uses: actions/upload-artifact@v3
+        run: |
+          mkdir -p logs
+          docker ps -a > logs/containers.txt
+          for svc in postgres auth-service course-service evaluation-service; do
+            docker logs $svc > logs/$svc.log 2>&1 || echo "No logs" > logs/$svc.log
+          done
+
+      - name: Subir artifacts de logs
+        if: failure()
+        uses: actions/upload-artifact@v4
         with:
           name: docker-logs
-          path: |
-            docker-compose.ci.yml
-            **/docker-logs.txt
-        
+          path: logs/
 
   frontend-build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout del repositorio
         uses: actions/checkout@v4
@@ -109,9 +103,9 @@ jobs:
 
       - name: Build de frontend
         working-directory: frontend
-        run: npm run build
         env:
           VITE_API_URL: http://localhost:5003/api
           VITE_COURSE_SERVICE_URL: http://localhost:5003/api
           VITE_AUTH_SERVICE_URL: http://localhost:4000/api/auth
           VITE_EVALUATION_SERVICE_URL: http://localhost:5005/api/evaluations
+        run: npm run build

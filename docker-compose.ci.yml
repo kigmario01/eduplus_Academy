@@ -1,0 +1,67 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: eduplus-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: eduplus
+    ports:
+      - "5555:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: eduplus-auth
+    env_file:
+      - .env
+      - .env.example
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/eduplus
+      JWT_SECRET: test-secret
+    depends_on:
+      - postgres
+    ports:
+      - "4000:4000"
+
+  course-service:
+    build:
+      context: ./services/course-service
+      dockerfile: Dockerfile
+    container_name: eduplus-course
+    env_file:
+      - .env
+      - .env.example
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/eduplus
+    depends_on:
+      - postgres
+    ports:
+      - "5003:3001"
+
+  evaluation-service:
+    build:
+      context: ./services/evaluation-service
+      dockerfile: Dockerfile
+    container_name: eduplus-evaluation
+    env_file:
+      - .env
+      - .env.example
+    environment:
+      PORT: 5005
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/eduplus
+      JWT_SECRET: test-secret
+    depends_on:
+      - postgres
+      - auth-service
+      - course-service
+    ports:
+      - "5005:5005"
+
+volumes:
+  pgdata:
