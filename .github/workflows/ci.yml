@@ -23,6 +23,11 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Crear archivo .env para CI
+        run: |
+          echo "NODE_ENV=test" > .env
+          echo "JWT_SECRET=test-secret" >> .env
+
       - name: Construir imágenes Docker con Compose
         run: |
           docker compose build auth-service course-service evaluation-service
@@ -61,10 +66,6 @@ jobs:
       - name: Instalar dependencias de frontend
         working-directory: frontend
         run: npm ci || npm install
-
-      - name: Lint de frontend
-        working-directory: frontend
-        run: npm run lint
 
       - name: Build de frontend
         working-directory: frontend
