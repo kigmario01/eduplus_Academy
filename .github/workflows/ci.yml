@@ -23,10 +23,16 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Crear archivo .env para CI
+      - name: Instalar utilidades
         run: |
-          echo "NODE_ENV=test" > .env
-          echo "JWT_SECRET=test-secret" >> .env
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Crear .env desde .env.example si falta
+        run: |
+          if [ ! -f ".env" ]; then
+            cp .env.example .env
+          fi
 
       - name: Construir imágenes Docker con Compose
         run: |
@@ -36,21 +42,21 @@ jobs:
         run: |
           docker compose up -d postgres auth-service course-service evaluation-service
 
-      - name: Esperar a que los servicios estén listos
+      - name: Esperar servicios saludables
         run: |
-          set -e
-          echo "Esperando health checks"
-          for i in {1..60}; do
-            auth_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/health || true)
-            course_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5003/api/courses || true)
-            eval_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5005/api/evaluations/health || true)
-            if [ "$auth_code" = "200" ] && [ "$course_code" = "200" ] && [ "$eval_code" = "200" ]; then
-              echo "Servicios saludables"
+          echo "Esperando que los servicios estén arriba..."
+          for i in {1..40}; do
+            HEALTHY=$(docker compose ps --format json | jq -r '.[].State.Health.Status' | grep healthy | wc -l)
+            if [ "$HEALTHY" -ge 4 ]; then
+              echo "Todos saludables"
               exit 0
             fi
-            sleep 2
+            echo "Aún no... intento $i/40"
+            sleep 3
           done
-          echo "Tiempo de espera agotado" && exit 1
+          docker compose ps
+          echo "Tiempo de espera agotado"
+          exit 1
 
   frontend-build:
     runs-on: ubuntu-latest
