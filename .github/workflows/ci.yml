@@ -21,10 +21,8 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Instalar herramientas necesarias
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq curl netcat-openbsd
+      - name: Instalar herramientas del sistema
+        run: sudo apt-get update && sudo apt-get install -y jq curl netcat-openbsd
 
       - name: Detectar comando docker compose
         id: compose
@@ -36,39 +34,33 @@ jobs:
           fi
 
       - name: Crear .env si no existe
-        run: |
-          if [ ! -f ".env" ]; then
-            cp .env.example .env
-          fi
+        run: if [ ! -f ".env" ]; then cp .env.example .env; fi
 
-      - name: Construir imágenes Docker para CI
-        run: |
-          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml build \
-            postgres auth-service course-service evaluation-service
+      - name: Construir imágenes Docker del CI
+        run: ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml build postgres auth-service course-service evaluation-service
 
-      - name: Levantar stack de servicios en CI
-        run: |
-          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml up -d \
-            postgres auth-service course-service evaluation-service
+      - name: Levantar microservicios
+        run: ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml up -d postgres auth-service course-service evaluation-service
 
-      - name: Esperar que servicios expongan sus puertos
+      - name: Esperar que los puertos estén arriba
         run: |
-          echo "Esperando puertos..."
+          echo "Esperando servicios..."
           for i in {1..30}; do
-            nc -z localhost 5555 && \
-            nc -z localhost 4000 && \
-            nc -z localhost 3001 && \
-            nc -z localhost 5005 && break
+            nc -z localhost 5555 && nc -z localhost 4000 && nc -z localhost 3001 && nc -z localhost 5005 && break
             echo "Aún no... intento $i/30"
             sleep 3
           done
 
-      - name: Instalar dependencias y ejecutar unit tests
+      - name: Instalar dependencias de microservicios
         run: |
-          npm ci
-          npm run test:unit
+          cd services/auth-service && npm ci || npm install && cd ../..
+          cd services/course-service && npm ci || npm install && cd ../..
+          cd services/evaluation-service && npm ci || npm install && cd ../..
 
-      - name: Capturar logs Docker (si falla)
+      - name: Ejecutar unit tests
+        run: npm run test:unit
+
+      - name: Capturar logs Docker en caso de fallo
         if: failure()
         run: |
           mkdir -p logs
@@ -77,7 +69,7 @@ jobs:
             docker logs $svc > logs/$svc.log 2>&1 || echo "No logs" > logs/$svc.log
           done
 
-      - name: Subir artifacts de logs
+      - name: Subir logs
         if: failure()
         uses: actions/upload-artifact@v4
         with:
@@ -97,11 +89,11 @@ jobs:
           node-version: '18'
           cache: 'npm'
 
-      - name: Instalar dependencias de frontend
+      - name: Instalar dependencias frontend
         working-directory: frontend
         run: npm ci || npm install
 
-      - name: Build de frontend
+      - name: Build del frontend
         working-directory: frontend
         env:
           VITE_API_URL: http://localhost:5003/api
