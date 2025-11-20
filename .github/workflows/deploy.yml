@@ -26,11 +26,65 @@ jobs:
           node-version: 18
           cache: npm
 
+      - name: Instalar utilidades
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Detectar comando docker compose
+        id: compose
+        run: |
+          if docker compose version >/dev/null 2>&1; then
+            echo "cmd=docker compose" >> $GITHUB_OUTPUT
+          else
+            echo "cmd=docker-compose" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Preparar .env
+        run: |
+          if [ ! -f ".env" ]; then
+            cp .env.example .env
+          fi
+
+      - name: Desactivar healthcheck para CI
+        run: |
+          cp docker-compose.yml docker-compose.ci.yml
+          sed -i 's/healthcheck:/# healthcheck:/g' docker-compose.ci.yml
+
+      - name: Construir imágenes
+        run: |
+          ${{ steps.compose.outputs.cmd }} build auth-service course-service evaluation-service
+
+      - name: Levantar servicios
+        run: |
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml up -d postgres auth-service course-service evaluation-service
+
+      - name: Esperar health endpoints
+        run: |
+          echo "Esperando health endpoints..."
+          for i in {1..40}; do
+            auth_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/health || true)
+            course_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health || true)
+            eval_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5005/api/evaluations/health || true)
+            if [ "$auth_code" = "200" ] && [ "$course_code" = "200" ] && [ "$eval_code" = "200" ]; then
+              echo "Servicios con health OK"
+              break
+            fi
+            echo "Aún no... intento $i/40 (auth=$auth_code course=$course_code eval=$eval_code)"
+            sleep 3
+          done
+
       - name: Install Root Dependencies
         run: npm ci
 
       - name: Run Integration Tests
         run: npm run test:integration
+
+      - name: Logs en fallo
+        if: failure()
+        run: |
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml ps
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml logs --tail=200
 
       - name: Confirm Tests Passed
         run: echo "Todo correcto. Tests superados ✔"

@@ -23,6 +23,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm'
 
       - name: Instalar utilidades
         run: |
@@ -75,6 +76,21 @@ jobs:
           echo "Tiempo de espera agotado"
           exit 1
 
+      - name: Ejecutar unit tests
+        run: |
+          npm ci
+          npm run test:unit
+
+      - name: Subir logs de Docker en fallo
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-logs
+          path: |
+            docker-compose.ci.yml
+            **/docker-logs.txt
+        
+
   frontend-build:
     runs-on: ubuntu-latest
     steps:
@@ -85,6 +101,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          cache: 'npm'
 
       - name: Instalar dependencias de frontend
         working-directory: frontend
@@ -93,3 +110,8 @@ jobs:
       - name: Build de frontend
         working-directory: frontend
         run: npm run build
+        env:
+          VITE_API_URL: http://localhost:5003/api
+          VITE_COURSE_SERVICE_URL: http://localhost:5003/api
+          VITE_AUTH_SERVICE_URL: http://localhost:4000/api/auth
+          VITE_EVALUATION_SERVICE_URL: http://localhost:5005/api/evaluations
