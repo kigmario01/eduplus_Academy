@@ -1,0 +1,97 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: Install utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Detect docker compose command
+        id: compose
+        run: |
+          if docker compose version >/dev/null 2>&1; then
+            echo "cmd=docker compose" >> $GITHUB_OUTPUT
+          else
+            echo "cmd=docker-compose" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Prepare .env for CI
+        run: |
+          if [ ! -f ".env" ]; then
+            cp .env.example .env
+          fi
+
+      - name: Disable healthcheck for CI
+        run: |
+          cp docker-compose.yml docker-compose.ci.yml
+          sed -i 's/healthcheck:/# healthcheck:/g' docker-compose.ci.yml
+
+      - name: Build service images
+        run: |
+          ${{ steps.compose.outputs.cmd }} build auth-service course-service evaluation-service
+
+      - name: Start services
+        run: |
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml up -d postgres auth-service course-service evaluation-service
+
+      - name: Wait for health endpoints
+        run: |
+          echo "Waiting for health endpoints..."
+          for i in {1..40}; do
+            auth_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/health || true)
+            course_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/health || true)
+            eval_code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5005/api/evaluations/health || true)
+            if [ "$auth_code" = "200" ] && [ "$course_code" = "200" ] && [ "$eval_code" = "200" ]; then
+              echo "Services healthy"
+              break
+            fi
+            echo "Not ready yet... attempt $i/40 (auth=$auth_code course=$course_code eval=$eval_code)"
+            sleep 3
+          done
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run integration tests with coverage
+        run: npm run test:integration
+
+      - name: Upload integration coverage artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-integration
+          path: coverage/integration
+
+      - name: Logs on failure
+        if: failure()
+        run: |
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml ps
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml logs --tail=200
+
+      - name: Shutdown services
+        if: always()
+        run: |
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml down
