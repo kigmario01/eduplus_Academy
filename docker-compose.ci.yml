@@ -1,118 +1,104 @@
-name: CI - EduPlus Academy
+services:
+  postgres:
+    image: postgres:15
+    container_name: eduplus-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=eduplus
+    ports:
+      - "5555:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # healthcheck: disabled in CI
+    # test: ["CMD-SHELL", "pg_isready -U postgres"]
+    # interval: 10s
+    # timeout: 5s
+    # retries: 5
 
-on:
-  push:
-    branches: ["**"]
-  pull_request:
-    branches: ["**"]
-  workflow_dispatch:
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: eduplus-auth
+    env_file:
+      - .env
+      - .env.example
+    environment:
+      - PORT=${PORT:-4000}
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/eduplus
+      - JWT_SECRET=test-secret
+    depends_on:
+      - postgres
+    ports:
+      - "4000:4000"
+    # healthcheck: disabled in CI
+    # test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+    # interval: 10s
+    # timeout: 5s
+    # retries: 10
 
-jobs:
-  backend-stack:
-    runs-on: ubuntu-latest
+  course-service:
+    build:
+      context: ./services/course-service
+      dockerfile: Dockerfile
+    container_name: eduplus-course
+    env_file:
+      - .env
+      - .env.example
+    environment:
+      - PORT=3001
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/eduplus
+    depends_on:
+      - postgres
+    ports:
+      - "5003:3001"
+    # healthcheck: disabled in CI
+    # test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+    # interval: 10s
+    # timeout: 5s
+    # retries: 10
 
-    steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
+  evaluation-service:
+    build:
+      context: ./services/evaluation-service
+      dockerfile: Dockerfile
+    container_name: eduplus-evaluation
+    env_file:
+      - .env
+      - .env.example
+    environment:
+      - PORT=5005
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/eduplus
+      - JWT_SECRET=test-secret
+    depends_on:
+      - postgres
+      - auth-service
+      - course-service
+    ports:
+      - "5005:5005"
+    # healthcheck: disabled in CI
+    # test: ["CMD", "curl", "-f", "http://localhost:5005/api/evaluations/health"]
+    # interval: 10s
+    # timeout: 5s
+    # retries: 10
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: "http://localhost:5003/api"
+        VITE_COURSE_SERVICE_URL: "http://localhost:5003/api"
+        VITE_AUTH_SERVICE_URL: "http://localhost:4000/api/auth"
+        VITE_EVALUATION_SERVICE_URL: "http://localhost:5005/api/evaluations"
+    container_name: eduplus-front
+    depends_on:
+      - auth-service
+      - course-service
+      - evaluation-service
+    ports:
+      - "8080:80"
 
-      - name: Instalar herramientas del sistema
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y jq curl netcat-openbsd
-
-      - name: Detectar comando docker compose
-        id: compose
-        run: |
-          if docker compose version >/dev/null 2>&1; then
-            echo "cmd=docker compose" >> $GITHUB_OUTPUT
-          else
-            echo "cmd=docker-compose" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Crear .env si no existe
-        run: |
-          if [ ! -f ".env" ]; then
-            cp .env.example .env
-          fi
-
-      - name: Construir imágenes Docker del CI
-        run: |
-          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml build \
-            postgres auth-service course-service evaluation-service
-
-      - name: Levantar microservicios
-        run: |
-          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml up -d \
-            postgres auth-service course-service evaluation-service
-
-      - name: Esperar que los puertos estén arriba
-        run: |
-          echo "Esperando servicios..."
-          for i in {1..30}; do
-            nc -z localhost 5555 && \
-            nc -z localhost 4000 && \
-            nc -z localhost 3001 && \
-            nc -z localhost 5005 && break
-            echo "Aún no... intento $i/30"
-            sleep 3
-          done
-
-      - name: Instalar dependencias de microservicios
-        run: |
-          cd services/auth-service && npm ci || npm install && cd ../..
-          cd services/course-service && npm ci || npm install && cd ../..
-          cd services/evaluation-service && npm ci || npm install && cd ../..
-          echo "Dependencias instaladas correctamente."
-
-      - name: Ejecutar unit tests
-        run: |
-          npm run test:unit
-
-      - name: Capturar logs de Docker en caso de fallo
-        if: failure()
-        run: |
-          mkdir -p logs
-          docker ps -a > logs/containers.txt
-          for svc in postgres auth-service course-service evaluation-service; do
-            docker logs $svc > logs/$svc.log 2>&1 || echo "No logs" > logs/$svc.log
-          done
-
-      - name: Subir logs
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: docker-logs
-          path: logs/
-
-
-  frontend-build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Instalar dependencias frontend
-        working-directory: frontend
-        run: npm ci || npm install
-
-      - name: Build del frontend
-        working-directory: frontend
-        env:
-          VITE_API_URL: http://localhost:5003/api
-          VITE_COURSE_SERVICE_URL: http://localhost:5003/api
-          VITE_AUTH_SERVICE_URL: http://localhost:4000/api/auth
-          VITE_EVALUATION_SERVICE_URL: http://localhost:5005/api/evaluations
-        run: npm run build
+volumes:
+  pgdata:

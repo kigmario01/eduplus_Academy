@@ -41,16 +41,13 @@ jobs:
             cp .env.example .env
           fi
 
-      - name: Disable healthcheck for CI
-        run: |
-          cp docker-compose.yml docker-compose.ci.yml
-          sed -i 's/healthcheck:/# healthcheck:/g' docker-compose.ci.yml
+      # Use dedicated CI compose file committed in repo
 
-      - name: Build service images
+      - name: Build service images (CI compose)
         run: |
-          ${{ steps.compose.outputs.cmd }} build auth-service course-service evaluation-service
+          ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml build auth-service course-service evaluation-service
 
-      - name: Start services
+      - name: Start services (CI compose)
         run: |
           ${{ steps.compose.outputs.cmd }} -f docker-compose.ci.yml up -d postgres auth-service course-service evaluation-service
 
