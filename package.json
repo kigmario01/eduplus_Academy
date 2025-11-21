@@ -1,5 +1,10 @@
 {
   "scripts": {
+    "ci:auth": "cd services/auth-service && npm ci",
+    "ci:course": "cd services/course-service && npm ci",
+    "ci:evaluation": "cd services/evaluation-service && npm ci",
+    "install:services": "npm run ci:auth && npm run ci:course && npm run ci:evaluation",
+    "pretest:unit": "npm run install:services",
     "test:integration": "jest --config=jest.integration.config.js --runInBand --testTimeout=30000 --coverage",
     "test:unit": "node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand"
   },
